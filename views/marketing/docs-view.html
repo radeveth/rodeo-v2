@@ -1,0 +1,31 @@
+{{template "partials/header" .}}
+
+<div class="flex">
+  <div class="docs-sidebar">
+    <label>Protocol</label>
+    <a href="/docs/introduction/">Introduction</a>
+    <a href="/docs/home/">README</a>
+    <a href="/docs/home/">Main Feature 1</a>
+    <a href="/docs/home/">TOKEN Token</a>
+
+    <label>Protocol</label>
+    <a href="/docs/home/">Aspect #1</a>
+    <a href="/docs/home/">Feature #2</a>
+    <a href="/docs/home/">Diagonal #3</a>
+    <a href="/docs/home/">Angle #4</a>
+
+    <label>Additional Information</label>
+    <a href="/docs/home/">Official Links</a>
+    <a href="/docs/home/">Contract Addresses</a>
+    <a href="/docs/home/">Audits</a>
+    <a href="/docs/home/">Media Kit</a>
+    <a href="/docs/home/">Terms of Use</a>
+  </div>
+  <div class="flex-1">
+    <h1>{{.doc.Title}}</h1>
+    <div class="richtext mb-4">{{markdown .doc.Content}}</div>
+    <div class="text-faded text-sm">Last updated {{.doc.Updated.Format "January 2, 2006"}}</div>
+  </div>
+</div>
+
+{{template "partials/footer" .}}

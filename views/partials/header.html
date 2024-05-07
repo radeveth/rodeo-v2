@@ -1,0 +1,76 @@
+<!doctype html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="shortcut icon" href="/assets/favicon.png" />
+  <link rel="stylesheet" href="/assets/styles.css" />
+  <title>{{if .title}}{{.title}} | {{end}}{{env "COMPANY_NAME"}}</title>
+  <script src="/assets/turbo.js"></script>
+</head>
+<body>
+<div class="token-banner hide-phone">
+  <div class="flex items-center">
+    <img class="mr-2" src="/assets/assets/rodeo.svg" />
+    <div class="mr-2 hide-phone">RDO price:</div>
+    <div class="mr-2 font-bold">{{formatNumber .priceRdo 18 2}}</div>
+    <a
+      class="hide-phone"
+      target="_blank"
+      rel="noopener noreferrer"
+      href="https://arbiscan.io/token/0x033f193b3Fceb22a440e89A2867E8FEE181594D9"
+    >
+      0x033f...94D9
+    </a>
+    <div class="flex-1"></div>
+    <div class="mr-4 hide-phone">Buy RDO on:</div>
+    <img src="/assets/bitmart.png" class="mr-1" />
+    <a
+      class="mr-4"
+      target="_blank"
+      rel="noopener noreferrer"
+      href="https://www.bitmart.com/trade/en-US?symbol=RDO_USDT"
+    >
+      Bitmart
+    </a>
+    <img src="/assets/protocols/camelot.svg" class="mr-1" />
+    <a
+      class="mr-4"
+      target="_blank"
+      rel="noopener noreferrer"
+      href="https://app.camelot.exchange/?token2=0x033f193b3Fceb22a440e89A2867E8FEE181594D9"
+    >
+      Camelot
+    </a>
+    <img src="/assets/protocols/rodeo.svg" class="mr-1" />
+    <a target="_blank" rel="noopener noreferrer" href="/silos">
+      Stake & Earn
+    </a>
+  </div>
+</div>
+<div class="nav">
+  <div>
+    <a href="/"><img src="/assets/logo.png" height="37px" /></a>
+    <a class="ml-4" href="/farm/">Farms</a>
+    <a class="ml-4" href="https://www.rodeofinance.xyz/farm">Farms V1</a>
+    <a class="ml-4" href="/earn/">Earn</a>
+    <a class="ml-4" href="/silos/">Silo</a>
+    <a class="ml-4" href="/rewards/">Rewards</a>
+    <a class="ml-4" href="/vesting/">Vesting</a>
+    <a class="ml-4" href="/analytics/">Analytics</a>
+    <a class="ml-4" href="/leaderboard/">Leaderboard</a>
+  </div>
+  <div class="text-right">
+    <a class="button" onclick="chain.onConnect()">
+      {{if .address}}
+        {{formatAddress .address}}
+      {{else}}
+        Connect Wallet
+      {{end}}
+    </a>
+  </div>
+</div>
+<div class="beta-warning">
+  Rodeo Finance has been <a href="https://docs.rodeofinance.xyz/contracts-audits-and-security/audits" target="_blank">audited</a> four times; but third party oracles may report erroneous values resulting in loss of funds and liquidations which we cannot compensate for. Use at your own risk.
+</div>
+<div class="page">
+<div class="container">

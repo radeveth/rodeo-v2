@@ -1,0 +1,23 @@
+{
+  "name": "app",
+  "type": "module",
+  "files": [
+    "app.dist.js"
+  ],
+  "main": "./app.dist.js",
+  "module": "./app.js",
+  "devDependencies": {
+    "esbuild": "0.20.1",
+    "ethers": "6.11.1",
+    "merkletreejs": "0.3.11"
+  },
+  "scripts": {
+    "build": "esbuild app.js --bundle --outfile=app.dist.js && mv app.dist.js ../../assets/app.js"
+  },
+  "dependencies": {
+    "@wagmi/connectors": "4.1.14",
+    "@wagmi/core": "2.6.5",
+    "@web3modal/wagmi": "4.0.13",
+    "viem": "2.7.20"
+  }
+}

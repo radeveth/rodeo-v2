@@ -1,0 +1,22 @@
+{{template "partials/header_app" .}}
+
+<form method="post">
+  <h1>Profile</h1>
+  <div class="mb-4"><a href="/">&larr; Back</a></div>
+
+  <label class="label">Name</label>
+  <input class="input mb-4" name="name" value="{{.v.User.Name}}" />
+  <label class="label">Username</label>
+  <input class="input mb-4" name="username" value="{{.v.User.Username}}" />
+  <label class="label">Password (optional)</label>
+  <input class="input mb-4" name="password" type="password" />
+  <label class="label">Theme Color (e.g. #00FFFF)</label>
+  <input class="input mb-4" name="color" value="{{.v.User.Color}}" />
+  <label class="label">Telegram Handle</label>
+  <input class="input mb-4" name="telegram" value="{{.v.User.Telegram}}" />
+  <div class="flex">
+    <div class="flex-1"><button class="button" type="submit">Save</button></div>
+  </div>
+</form>
+
+{{template "partials/footer_app" .}}

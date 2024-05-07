@@ -1,0 +1,18 @@
+{{template "partials/header" .}}
+
+<form class="auth" novalidate method="post" class="auth">
+  <h1 class="f2">Password Reset</h1>
+  {{if .errors}}
+    <div class="alert negative mb4">{{range .errors}}{{.}}<br />{{end}}</div>
+  {{else}}
+    <div class="mb4">
+      <label class="label">Password</label>
+      <input class="input" type="password" name="password" value="{{.password}}" autofocus />
+      <div class="f2">Pick a new password for your account.</div>
+    </div>
+    <button class="button secondary large w-100" type="submit">Change my password</button>
+  {{end}}
+  Remembered you password? <a href="/signin/">Sign in</a><br />
+</form>
+
+{{template "partials/footer" .}}

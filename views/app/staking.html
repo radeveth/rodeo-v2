@@ -1,0 +1,92 @@
+{{template "partials/header" .}}
+  <h1>Dividend Silo</h1>
+  <p class="text-faded text-xl">Protocol fees earned from liquidations, farm performance and early exit fees are partly redistributed to xRDO holders.</p>
+  <p><b>APY</b> {{formatNumber .apy 16 1}}% <b>xRDO</b> <a href="https://arbiscan.io/address/{{.xrdo}}" target="_blank">{{formatAddress .xrdo}}</a></p>
+
+  <div class="grid-2 mb-6">
+    <form class="card" onsubmit="chain.onSilos(event, '{{.rdo}}', '{{.xrdo}}', '{{.tokenStakingDividends}}', '{{.tab}}', '{{.allowance}}')">
+      <div class="tabs mb-4">
+        <a class="tab{{if eq .tab "deposit"}} tab-active{{end}}" href="?tab=deposit">Deposit</a>
+        <a class="tab{{if eq .tab "withdraw"}} tab-active{{end}}" href="?tab=withdraw">Withdraw</a>
+        <a class="tab{{if eq .tab "claim"}} tab-active{{end}}" href="?tab=claim">Claim</a>
+      </div>
+
+      <div id="error" class="error hidden mb-4"></div>
+
+      {{if eq .tab "deposit"}}
+        <div class="flex label">
+          <label class="flex-1">Amount</label>
+          <div>{{formatNumber .balance 18 2}} <a onclick="amount.value = '{{formatUnits .balance 18}}'">Max</a></div>
+        </div>
+        <input id="amount" class="input mb-4" placeholder="0.0" oninput="chain.updateSilo()" />
+        <button id="action" class="button button-lg w-full" type="submit">
+          Deposit
+        </button>
+      {{else if eq .tab "withdraw"}}
+        <div class="flex label">
+          <label class="flex-1">Amount</label>
+          <div>{{formatNumber .deposited 18 2}} <a onclick="amount.value = '{{formatUnits .deposited 18}}'">Max</a></div>
+        </div>
+        <input id="amount" class="input mb-4" placeholder="0.0" oninput="chain.updateSilo()" />
+        <label class="label" id="vestingLabel">
+          Vesting time (180 days, 6.0 months)
+        </label>
+        <input
+          id="amountTime"
+          class="block w-full mb-4"
+          type="range"
+          step="1"
+          min="15"
+          max="180"
+          value="180"
+          oninput="chain.updateSilo()"
+        />
+        <script>setTimeout(() => chain.updateSilo(), 1000)</script>
+        <div class="flex mb-2">
+          <div class="flex-1 font-bold">RDO tokens you will get</div>
+          <div id="vestingTokens"></div>
+        </div>
+        <div class="flex mb-4">
+          <div class="flex-1 font-bold">Vesting ends</div>
+          <div id="vestingEnds"></div>
+        </div>
+        <button id="action" class="button button-lg w-full" type="submit">
+          Withdraw
+        </button>
+      {{else}}
+        <button id="action" class="button button-lg w-full" type="submit">
+          Claim Dividends
+        </button>
+      {{end}}
+
+    </form>
+    <div class="card">
+      <label class="label">Staked</label>
+      <div class="flex items-center mb-2">
+        <div class="font-bold flex-1">xRDO</div>
+        <div class="font-lg">{{formatNumber .deposited 18 2}}</div>
+      </div>
+      <label class="label">Available For Deposit</label>
+      <div class="flex items-center mb-2">
+        <div class="font-bold flex-1">RDO</div>
+        <div class="font-lg">{{formatNumber .balance 18 2}}</div>
+      </div>
+      <label class="label">Earned Dividends</label>
+      <div class="flex items-center">
+        <div class="font-bold flex-1">RDO</div>
+        <div class="font-lg">{{formatNumber .dividendsRdo 18 2}}</div>
+      </div>
+      <div class="flex items-center mb-2">
+        <div class="font-bold flex-1">USDC</div>
+        <div class="font-lg">{{formatNumber .dividendsUsdc 6 2}}</div>
+      </div>
+      <label class="label">Total Deposited (By Everyone)</label>
+      <div class="flex items-center mb-2">
+        <div class="font-bold flex-1">xRDO</div>
+        <div class="font-lg">{{formatNumber .total 18 2}}</div>
+      </div>
+    </div>
+  </div>
+
+  <a href="https://www.rodeofinance.xyz/silos" target="_blank">Looking for the old page?</a>
+{{template "partials/footer" .}}

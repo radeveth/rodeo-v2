@@ -1,0 +1,43 @@
+{{template "partials/header" .}}
+  <h1>Rewards</h1>
+
+  <p class="text-faded text-xl mb-2">Claim your weekly ARB STIP rewards for providing TVL to GMX V2 farms and the USDC liquidity pool here.</p>
+  <p class="text-faded font-sm mt-0">A daily snapshot of all the addresses with TVL is used to calculate reward proportionately, added up and claimable every 7 days.<br/>The initial amounts being distributed are 45,000 ARB to LPs over 6 months and 5,000 ARB to farmers in the GMX V2 pools over 6 months.</p>
+
+  <div class="grid-2 mb-4">
+    <div class="card text-center">
+      <div class="label">Lending APR</div>
+      <div class="font-bold font-lg">{{formatNumber .data.Earn 16 1}}%</div>
+    </div>
+    <div class="card text-center">
+      <div class="label">Farming APR</div>
+      <div class="font-bold font-lg">{{formatNumber .data.Farm 16 1}}%</div>
+    </div>
+  </div>
+
+  <div id="error" class="error hidden mb-4"></div>
+
+  <div class="card p-0">
+    <div class="card-grid-row grid-3">
+      <div class="label">Week</div>
+      <div class="label text-right">Claimed / Total</div>
+      <div class="label"></div>
+    </div>
+    {{range $i, $w := .weeks}}
+      <div class="card-grid-row grid-3 items-center">
+        <div>{{.name}}</div>
+        <div class="text-right">
+          {{formatNumber .claimed 18 2}} / {{formatNumber .claimable 18 2}} ARB
+        </div>
+        <div class="text-right">
+          {{if eq $i 7}}
+            <button class="button" disabled>Claim</button>
+          {{else}}
+            <button class="button" {{if .claimed.Eq .claimable}}disabled{{end}} onclick='chain.onRewards(event, `{{$.stipDistributor}}`, `{{$i}}`, `{{.claimable.String}}`, `{{json .proof}}`)'>Claim</button>
+          {{end}}
+        </div>
+      </div>
+    {{end}}
+    </div>
+  </div>
+{{template "partials/footer" .}}

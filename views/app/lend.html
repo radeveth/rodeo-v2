@@ -1,0 +1,63 @@
+{{template "partials/header" .}}
+  <h1>Earn</h1>
+  <p class="text-faded text-xl">Deposit USDC.e to earn fees from borrower using farms.</p>
+  <div class="grid-3 mb-4">
+    <div class="card text-center">
+      <div class="label">Supply APR</div>
+      <div class="font-bold font-lg">{{formatNumber .pool.SupplyRate 16 1}}%</div>
+    </div>
+    <div class="card text-center">
+      <div class="label">Supplied</div>
+      <div class="font-bold font-lg">{{formatNumber .pool.Supply 6 0}}</div>
+    </div>
+    <div class="card text-center">
+      <div class="label">Utilisation</div>
+      <div class="font-bold font-lg">{{formatNumber .pool.Utilisation 16 1}}%</div>
+    </div>
+    <div class="card text-center">
+      <div class="label">Borrow APR</div>
+      <div class="font-bold font-lg">{{formatNumber .pool.Rate 16 1}}%</div>
+    </div>
+    <div class="card text-center">
+      <div class="label">Borrowed</div>
+      <div class="font-bold font-lg">{{formatNumber .pool.Borrow 6 0}}</div>
+    </div>
+    <div class="card text-center">
+      <div class="label">Oracle Price</div>
+      <div class="font-bold font-lg">$ {{formatNumber .pool.Price 18 2}}</div>
+    </div>
+  </div>
+  <div class="grid-2 mb-6">
+    <form class="card" onsubmit="chain.onEarn(event, '{{.pool.Address}}', '{{.pool.Asset}}', '{{.tab}}', '{{.balanceShares}}', '{{.balanceLent}}', '{{.allowance}}')">
+      <div class="tabs mb-4">
+        <a class="tab{{if eq .tab "deposit"}} tab-active{{end}}" href="?tab=deposit">Deposit</a>
+        <a class="tab{{if eq .tab "withdraw"}} tab-active{{end}}" href="?tab=withdraw">Withdraw</a>
+      </div>
+
+      <div id="error" class="error hidden mb-4"></div>
+
+      <div class="flex label">
+        <label class="flex-1">Amount</label>
+        {{if eq .tab "deposit"}}
+          <div>{{formatNumber .balanceAsset 6 2}} <a onclick="amount.value = '{{formatUnits .balanceAsset 6}}'">Max</a></div>
+        {{else}}
+          <div>{{formatNumber .balanceLent 6 2}} <a onclick="amount.value = '{{formatUnits .balanceLent 6}}'">Max</a></div>
+        {{end}}
+      </div>
+      <input id="amount" class="input mb-4" placeholder="0.0" />
+
+      <button id="action" class="button button-lg w-full" type="submit">
+        {{if eq .tab "deposit"}}Deposit{{else}}Withdraw{{end}}
+      </button>
+    </form>
+    <div class="card">
+      <label class="label">Wallet</label>
+      <div class="flex items-center mb-2">
+        <div class="font-bold flex-1">USDC.e</div>
+        <div class="font-lg">{{formatNumber .balanceLent 6 2}}</div>
+      </div>
+    </div>
+  </div>
+
+  <a href="https://www.rodeofinance.xyz/earn/usdc-v1" target="_blank">Looking for the old page?</a>
+{{template "partials/footer" .}}

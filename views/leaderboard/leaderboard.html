@@ -1,0 +1,237 @@
+{{template "partials/header" .}}
+
+{{if .error}}
+  <div class="error mb-6">{{.error}}</div>
+{{end}}
+
+<div class="grid-4 mb-16" style="grid-template-columns:2.5fr 1fr 1fr 1fr;">
+  <div>
+    <h1>Community Program</h1>
+    <p style="max-width:340px;">Unleash the potential of our Community Program and be a catalyst for growth</p>
+  </div>
+  <div class="card leaderboard-explainer">
+    <div class="leaderboard-explainer-icon">
+      <img src="/assets/icons/mail-new.svg" class="icon" />
+    </div>
+    Earn Bulls for referrals and protocol usage
+  </div>
+  <div class="card leaderboard-explainer">
+    <div class="leaderboard-explainer-icon">
+      <img src="/assets/icons/arbitrum.svg" class="icon" />
+    </div>
+    Earn ARB rewards
+  </div>
+  <div class="card leaderboard-explainer">
+    <div class="leaderboard-explainer-icon">
+      <img src="/assets/icons/star.svg" class="icon" />
+    </div>
+    Boost your rewards
+  </div>
+</div>
+
+<div class="mb-16">
+  <h1>Referral Link</h1>
+  <p style="max-width:340px;">Complete 3 easy steps and start earning points for referrals</p>
+
+  {{if .address}}
+    <div class="card p-8 grid-2">
+      <div>
+        <h2 data-ua="{{.userArb}}">
+          <img class="icon" src="/assets/icons/bull.svg" style="width:32px;height:32px;position:relative;top:2px;" />
+          {{.user.Points}}
+        </h2>
+        <p>Available bulls</p>
+        <button class="button" onclick="pointsModal.style.display='block'">How to earn Bulls?</button>
+      </div>
+      <div>
+        <h2>Your invite link</h2>
+        <p>Invite friends to earn Bulls and 25% of theirs Bulls</p>
+        <div class="flex">
+          <input id="refLink" class="input flex mr-2" readonly value="{{env "BASE_URL"}}/i/{{.user.Code}}" />
+          <button class="button" onclick="navigator.clipboard.writeText(refLink.value)">Copy</button>
+        </div>
+      </div>
+    </div>
+  {{else}}
+    <div class="grid-3 gap-4">
+      <div class="card p-8 text-center">
+        <img class="mb-4" src="/assets/icons/walletconnect80.png" />
+        <div class="mb-4">Connect your wallet</div>
+        <button class="button" onclick="chain.onConnect()">Connect</button>
+      </div>
+      <div class="card p-8 text-center">
+        <img class="mb-4" src="/assets/icons/x80.png" />
+        <div class="mb-4">Follow us on X</div>
+        <button class="button" disabled>Follow</button>
+      </div>
+      <div class="card p-8 text-center">
+        <img class="mb-4" src="/assets/icons/discord80.png" />
+        <div class="mb-4">Join our Discord</div>
+        <button class="button" disabled>Join</button>
+      </div>
+    </div>
+  {{end}}
+</div>
+
+<div class="mb-16" id="leaderboard">
+  <h1>Bulls: Season 1: Ended</h1>
+  <p style="max-width:340px;">Season 1 of Rodeo Bulls will reward users for deploying assets into various products on Rodeo Finance</p>
+
+  <div class="tabs mb-4" style="max-width: 420px">
+    <a class="tab{{if eq .tab "leaderboard"}} tab-active{{end}}" href="?tab=leaderboard#leaderboard">Leaderboard</a>
+    <a class="tab{{if eq .tab "points"}} tab-active{{end}}" href="?tab=points#leaderboard">My Bulls</a>
+    <a class="tab{{if eq .tab "referrals"}} tab-active{{end}}" href="?tab=referrals#leaderboard">My Referrals</a>
+  </div>
+
+  {{if eq .tab "leaderboard"}}
+    <table class="leaderboard">
+      <thead>
+        <tr>
+          <th>Rank</th>
+          <th>Name</th>
+          <th>Wallet</th>
+          <th>Invited by</th>
+          <th style="text-align:right;" title="Total: {{formatNumber .total 0 0}}">Bulls</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range $i, $u := .users}}
+          <tr>
+            <td>{{add $i 1}}</td>
+            <td>
+              {{if .SocialPicture}}
+                <img width="24" class="rounded-full mr-2" src="{{.SocialPicture}}" />
+              {{end}}
+              {{or .SocialName "N/A"}}
+            </td>
+            <td>{{formatAddress .Address}}</td>
+            <td>
+              {{if and (hasPrefix .Referrer "0x") (eq (len .Referrer) 42)}}
+                {{formatAddress .Referrer}}
+              {{else}}
+                {{.Referrer}}
+              {{end}}
+            </td>
+            <td style="text-align:right;">{{.Points}}</td>
+          </tr>
+        {{end}}
+      </tbody>
+    </table>
+  {{else if eq .tab "points"}}
+    <table class="leaderboard">
+      <thead>
+        <tr>
+          <th>Time</th>
+          <th>Reason</th>
+          <th style="text-align:right;">Bulls</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range $i, $u := .points}}
+          <tr>
+            <td>{{.Created.Format "2006-01-02 15:04"}}</td>
+            <td>{{title .Reason}}</td>
+            <td style="text-align:right;">{{.Points}}</td>
+          </tr>
+        {{else}}
+          <tr><td colspan="3" style="text-align:center;font-size:20px;padding:32px;">No bulls yet!</td></tr>
+        {{end}}
+      </tbody>
+    </table>
+  {{else if eq .tab "referrals"}}
+    <table class="leaderboard">
+      <thead>
+        <tr>
+          <th>Joined</th>
+          <th>Name</th>
+          <th>Wallet</th>
+          <th style="text-align:right;">Bulls</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range $i, $u := .referrals}}
+          <tr>
+            <td>{{.Created.Format "2006-01-02 15:04"}}</td>
+            <td>
+              {{if .SocialPicture}}
+                <img width="24" class="rounded-full mr-2" src="{{.SocialPicture}}" />
+              {{end}}
+              {{or .SocialName "N/A"}}
+            </td>
+            <td>{{formatAddress .Address}}</td>
+            <td style="text-align:right;">{{.Points}}</td>
+          </tr>
+        {{else}}
+          <tr><td colspan="4" style="text-align:center;font-size:20px;padding:32px;">No referral yet!</td></tr>
+        {{end}}
+      </tbody>
+    </table>
+  {{end}}
+</div>
+
+{{if .address}}
+<div class="modal-overlay hidden points-modal" id="pointsModal" onclick="pointsModal.style.display='hidden'">
+  <div class="modal" style="max-width:900px;" onclick="event.stopPropagation()">
+    <a onclick="pointsModal.style.display='hidden'" class="foreground" style="float:right;"><svg class="icon" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></a>
+    <h2 class="text-center">Earn Bulls</h2>
+    <div class="grid-3">
+      <div>
+        <h3>Complete tasks</h3>
+        <div class="card p-2 flex items-center mb-2">
+          <div class="flex-1">Connect your wallet</div>
+          <button class="button button2" disabled>+100</button>
+        </div>
+        <div class="card p-2 flex items-center mb-2">
+          <div class="flex-1">Follow on X</div>
+          <button class="button button2" {{if .user.SocialID}}disabled{{end}} onclick="onSocial()">+100</button>
+        </div>
+        <div class="card p-2 flex items-center mb-2">
+          <div class="flex-1">Join our Discord</div>
+          <a class="button button2{{if .joinedDiscord}} disabled pointer-none{{end}}" href="/leaderboard/discord/">+100</a>
+        </div>
+        <div class="card p-2 flex items-center mb-2">
+          <div class="flex-1">Lending</div>
+          <a class="button button2" href="/earn/">+100/$1k/day</a>
+        </div>
+        <div class="card p-2 flex items-center mb-2">
+          <div class="flex-1">Farming</div>
+          <a class="button button2" href="/farm/">+100/$1k/day</a>
+        </div>
+      </div>
+      <div>
+        <h3>Boost Bulls earned</h3>
+        <div class="card text-center">
+          <div class="mb-4">xRDO Holding Boost</div>
+          <button class="button button-lg pointer-none">
+            1000% Boost
+          </button>
+          <p class="text-faded font-sm">Earn up to a 1000% boost to points earned for holding 100% of your farming/lending TVL as xRDO.</a>
+          <p class="text-faded font-sm mb-0">Example, farm with $40,000 hold $600 of RDO, get 15% boost to points earned.</a>
+        </div>
+      </div>
+      <div>
+        <h3>Compete for 1st</h3>
+        <div class="card text-center">
+          <div class="mb-4">Win 10k ARB for placing 1st</div>
+          <button class="button button-lg pointer-none flex items-center" style="color:#15A9F9;background: #203149;margin: 0 auto;">
+            <img src="/assets/assets/arb.png" width="16" class="mr-2" /> 10,000 ARB
+          </button>
+          <p class="text-faded font-sm mb-0">Finish this round ranked 1st and earn 10,000 ARB extra!</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+  function onSocial() {
+    if (!window.followed) {
+      window.open('https://twitter.com/intent/follow?screen_name={{env "X_USERNAME"}}', '_blank').focus();
+      window.followed = true;
+    } else {
+      window.location.href = '/leaderboard/x/';
+    }
+  }
+</script>
+{{end}}
+
+{{template "partials/footer" .}}

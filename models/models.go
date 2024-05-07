@@ -1,0 +1,20 @@
+package models
+
+var DefaultChainId int64 = 42161
+var AddressHelper = "0x988826F0fCDA660e769558A0bDDfE0ba6aDfFB8F"
+var AddressRdo = "0x033f193b3Fceb22a440e89A2867E8FEE181594D9"
+var AddressXrdo = "0x45a58482c3B8Ce0e8435E407fC7d34266f0A010D"
+var AddressPool = "0x0032F5E1520a66C6E572e96A11fBF54aea26f9bE"
+var AddressInvestor = "0x780D46fef77ac5f83399BD2BE363125982A78973"
+var AddressPositionManager = "0x768778aB1B2c4E462172136eE2584Ea7494bcB81"
+var AddressBank = "0xa3720bC66ecaC3B275Ed1151fe0826e6d608c2ce"
+var AddressStore = "0xAEc407FD2c8631C769f560e0c496c0b5D20c95ad"
+var AddressWhitelist = "0xEAfca1BacD3D9ad8a8db1a09Db27D50Ba2a381F6"
+var AddressVester = "0xbb5032d20b689d9eE69A7C490Bd02Fc9efC734c2"
+var AddressSTIPDistributor = "0x08aa7480824f5B953A997d62a545382fE6071981"
+var AddressTokenStakingDividends = "0x40aDa8CE51aD45a0211a7f495A526E26e4b3b5Ea"
+var AddressLPToken2 = "0x5180Dce8F532f40d84363737858E2C5Fd0C8aB39"
+var AddressLPToken3 = "0x1caB47198197A62Cc5f627CC5135f2bEA9610aE4"
+var AddressMultisig = "0xaB7d6293CE715F12879B9fa7CBaBbFCE3BAc0A5a"
+var AddressMultisigTeam = "0x8c1Db765d956627F5C933EDcF3d628aa34E4a35c"
+var AddressMultisigCamelot = "0xbe98143d91AcdD381E5ed17e6b868dc30Eb8Ca68"

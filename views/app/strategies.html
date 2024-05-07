@@ -1,0 +1,251 @@
+{{template "partials/header" .}}
+  <h1>Farm</h1>
+
+  <div class="grid-2 mb-4" style="grid-template-columns:5fr 1fr;">
+    <div class="card grid-5" style="grid-template-columns:1fr 1fr 1fr 1fr 1fr;">
+      <div>
+        <div class="label">Value</div>
+        <div class="font-lg">$ {{formatNumber .totalValue 18 2}}</div>
+      </div>
+      <div>
+        <div class="label">Borrow</div>
+        <div class="font-lg">$ {{formatNumber .totalBorrow 18 2}}</div>
+      </div>
+      <div>
+        <div class="label">Profit</div>
+        <div class="font-lg">$ {{formatNumber .totalProfit 18 2}}</div>
+      </div>
+      <div>
+        <div class="label">Collateral</div>
+        <div class="font-lg">$ {{formatNumber .totalCollateral 18 2}}</div>
+      </div>
+      <div>
+        <div class="label">Avg. APY</div>
+        <div class="font-lg">{{formatNumber .totalApy 16 1}}%</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="label">Protocol TVL</div>
+      <div class="font-lg">$ {{formatNumber .totalTvl 24 1}}M</div>
+    </div>
+  </div>
+
+  <div class="card p-0 mb-4">
+    <div class="card-grid-row grid-5" style="grid-template-columns: repeat(5, 1fr);">
+      <div class="label">Collateral</div>
+      <div class="label text-right">Wallet</div>
+      <div class="label text-right">In Position</div>
+      <div class="label text-right">TVL</div>
+      <div class="label text-right">Cap</div>
+    </div>
+    {{range .collaterals}}
+      <div class="card-grid-row grid-5 items-center" style="grid-template-columns: repeat(5, 1fr);">
+        <div class=""><img class="icon mr-2" src="{{.Token.Icon}}" /> {{.Token.Symbol}}</div>
+        <div class="text-right">{{formatNumber .UserBalance .Token.Decimals 3}}</div>
+        <div class="text-right">{{formatNumber .PositionBalance .Token.Decimals 3}}</div>
+        <div class="text-right">{{formatNumber .Balance .Token.Decimals 2}}</div>
+        <div class="text-right">{{formatNumber .Cap .Token.Decimals 1}}</div>
+      </div>
+    {{end}}
+  </div>
+
+  {{if and .address (not .whitelisted)}}
+  <div class="error mb-4">
+    Rodeo Alamo is currently available only to whitelisted addresses, wait to get whitelisted before giving it a try ;)
+  </div>
+  {{end}}
+
+  <div class="card p-0">
+    <div class="card-grid-row grid-4">
+      <div class="label">Name</div>
+      <div class="label text-right">APY</div>
+      <div class="label text-right">TVL</div>
+      <div class="label text-right"></div>
+    </div>
+    {{range $s := .strategies}}
+      <div class="card-grid-row grid-4 items-center">
+        <div class="flex">
+          <div><img src="{{.Icon}}" width="28" class="mr-2" /></div>
+          <div>
+            <b>{{.Name}}</b><br/>
+            <span class="font-sm text-faded">{{.Protocol}}</span>
+          </div>
+        </div>
+        <div class="text-right">
+          {{formatNumber .ApyWithLeverage 16 1}}%<br/>
+          <span class="text-faded" style="text-decoration: line-through;">{{formatNumber .Apy 16 1}}%</span>
+        </div>
+        <div class="text-right">
+          {{formatNumber .TvlTotal 24 1}}M<br/>
+          <span class="text-faded">{{formatNumber .Tvl 21 1}}K</span>
+        </div>
+        <div class="text-right">
+          <a class="button" href="?s={{.Index}}&tab=new">Farm</a>
+        </div>
+      </div>
+      {{if index $.strategyPositions $s.Index}}
+        <div class="card-grid-row grid-7 label" style="grid-template-columns:1fr 1fr 1fr 1fr 1fr 1.5fr 1fr;">
+          <div class="text-right">#</div>
+          <div class="text-right">Collateral</div>
+          <div class="text-right">Value</div>
+          <div class="text-right">Borrow</div>
+          <div class="text-right">Profit</div>
+          <div class="text-right">APY</div>
+          <div></div>
+        </div>
+      {{end}}
+      {{range index $.strategyPositions $s.Index}}
+        <div class="card-grid-row grid-7 items-center" style="grid-template-columns:1fr 1fr 1fr 1fr 1fr 1.5fr 1fr;">
+          <div class="text-right">#{{.Index}}</div>
+          <div class="text-right">{{formatNumber .Collateral .CollateralToken.Decimals 2}} {{.CollateralToken.Symbol}}</div>
+          <div class="text-right">$ {{formatNumber .SharesValue 18 2}}</div>
+          <div class="text-right">$ {{formatNumber .BorrowValue 18 2}}</div>
+          <div class="text-right">$ {{formatNumber (.SharesValue.Sub .BorrowValue) 18 2}}</div>
+          <div class="text-right">{{formatNumber (index $.positionApys .Index) 16 1}}% ({{formatNumber (index $.positionLeverages .Index) 18 1}}x)</div>
+          <div class="text-right">
+            <a class="button" href="?p={{.Index}}&tab=borrow">Edit</a>
+          </div>
+        </div>
+      {{end}}
+    {{end}}
+  </div>
+
+  {{if eq .tab "new"}}
+    <div class="modal-overlay" onclick="Turbo.visit('/farm/',{replace:true})">
+      <form class="modal" onclick="event.stopPropagation()">
+        <input type="hidden" name="tab" value="{{.tab}}" />
+        <input type="hidden" name="s" value="{{.strategy.Index}}" />
+
+        <div class="flex">
+          <h2 class="flex-1">Open {{.strategy.Protocol}} {{.strategy.Name}}</h2>
+          <a href="/farm/" class="foreground"><svg class="icon" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></a>
+        </div>
+
+        <div id="error" class="error hidden mb-4"></div>
+
+        <div class="flex label">
+          <div class="flex-1">Collateral</div>
+          <div>{{formatNumber .balance .token.Decimals 2}} <a onclick="amountCollateral.value = '{{formatUnits .balance .token.Decimals}}'">Max</a></div>
+        </div>
+        <div class="grid-2 mb-4">
+          <input class="input" id="amountCollateral" name="collateral" value="{{.collateral}}" placeholder="0.0" oninput="chain.updateFarmOpen('{{.earnApy.String}}', '{{.strategy.Apy.String}}', '{{.tokenPrice.String}}')" />
+          <select class="input" id="tokenCollateral" name="token" onchange="event.target.form.submit()">
+            {{range .collaterals}}
+              <option value="{{.Token.Address}}" {{if eq $.token.Address .Token.Address}}selected{{end}}>
+                {{.Token.Symbol}} ({{formatAddress .Token.Address}})
+              </option>
+            {{end}}
+          </select>
+        </div>
+
+        <div class="flex label">
+          <div class="flex-1">Borrow</div>
+        </div>
+        <input class="input mb-4" id="amountBorrow" name="borrow" value="{{.borrow}}" placeholder="0.0" oninput="chain.updateFarmOpen('{{.earnApy.String}}', '{{.strategy.Apy.String}}', '{{.tokenPrice.String}}')" />
+
+        <div class=" grid-2 mb-4">
+          <div>
+            <b>Leverage</b>
+            <span id="numberLeverage">1</span>x
+          </div>
+          <div>
+            <b>Net APR</b>
+            <span id="numberNet">{{formatNumber .strategy.Apy 16 1}}</span>%
+          </div>
+          <div>
+            <b>Farm APR</b>
+            <span id="numberFarm">{{formatNumber .strategy.Apy 16 1}}</span>%
+          </div>
+          <div>
+            <b>Borrow APR</b>
+            <span id="numberEarn">{{formatNumber .earnApy 16 1}}</span>%
+          </div>
+        </div>
+
+        <script>setTimeout(() => chain.updateFarmOpen('{{.earnApy.String}}', '{{.strategy.Apy.String}}', '{{.tokenPrice.String}}'), 500);</script>
+
+        <button class="button button-lg w-full" onclick="chain.onFarmOpen(event, '{{.positionManager}}', '{{.strategy.Index}}', '{{.token.Address}}', {{.token.Decimals}}, '{{.tokenAllowance.String}}')">Open Position</button>
+      </form>
+    </div>
+  {{else if .tab}}
+    <div class="modal-overlay" onclick="Turbo.visit('/farm/',{replace:true})">
+      <form class="modal" style="max-width:600px;" onclick="event.stopPropagation()">
+        <input type="hidden" name="tab" value="{{.tab}}" />
+        <input type="hidden" name="p" value="{{.position.Index}}" />
+
+        <div class="flex">
+          <h2 class="flex-1">Edit position #{{.position.Index}}</h2>
+          <a href="/farm/" class="foreground"><svg class="icon" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></a>
+        </div>
+
+        <div class="tabs mb-4">
+          <a class="tab{{if eq .tab "borrow"}} tab-active{{end}}" href="?p={{.position.Index}}&tab=borrow">Borrow</a>
+          <a class="tab{{if eq .tab "repay"}} tab-active{{end}}" href="?p={{.position.Index}}&tab=repay">Repay</a>
+          <a class="tab{{if eq .tab "deposit"}} tab-active{{end}}" href="?p={{.position.Index}}&tab=deposit">Deposit</a>
+          <a class="tab{{if eq .tab "withdraw"}} tab-active{{end}}" href="?p={{.position.Index}}&tab=withdraw">Withdraw</a>
+        </div>
+
+        <div class="mb-4">
+          {{if eq .tab "borrow"}}
+            Borrow more in order to increase levearge
+          {{else if eq .tab "repay"}}
+            Divest to repay debt, withdraw profits and reduce leverage
+          {{else if eq .tab "deposit"}}
+            Deposit collateral in order to reduce leverage
+          {{else if eq .tab "withdraw"}}
+            Withdraw collateral, increasing leverage
+          {{end}}
+        </div>
+
+        <div id="error" class="error hidden mb-4"></div>
+
+        <div class="flex label">
+          <div class="flex-1">Amount</div>
+          {{if eq .tab "borrow"}}
+            <div>{{formatNumber (index .positionMaxBorrows .position.Index) 18 2}} <a onclick="amount.value = '{{formatUnits (index .positionMaxBorrows .position.Index) 18}}'">Max</a></div>
+          {{else if eq .tab "repay"}}
+            <div>{{formatNumber .position.SharesValue 18 2}} <a onclick="amount.value = '{{formatUnits .position.SharesValue 18}}'">Max</a></div>
+          {{else if eq .tab "deposit"}}
+            <div>{{formatNumber .balance .token.Decimals 2}} <a onclick="amount.value = '{{formatUnits .balance .token.Decimals}}'">Max</a></div>
+          {{else if eq .tab "withdraw"}}
+            <div>{{formatNumber .position.Collateral .token.Decimals 2}} <a onclick="amount.value = '{{formatUnits .position.Collateral .token.Decimals}}'">Max</a></div>
+          {{end}}
+        </div>
+        <input class="input mb-4" id="amount" name="amount" value="{{.amount}}" placeholder="0.0" oninput="chain.updateFarmEdit('{{json .position}}', '{{.tokenPrice.String}}', {{.token.Decimals}})" />
+
+        <script>setTimeout(() => chain.updateFarmEdit('{{json .position}}', '{{.tokenPrice.String}}', {{.token.Decimals}}, '{{index .positionApys .position.Index}}'), 500)</script>
+
+        <div class=" grid-2 mb-4">
+          <div class="flex">
+            <b class="flex-1">Leverage</b>
+            <span id="numberLeverage">1x &rarr; 1x</span>
+          </div>
+          <div class="flex">
+            <b class="flex-1">APY</b>
+            <span id="numberApy">0% &rarr; 0%</span>
+          </div>
+          <div class="flex">
+            <b class="flex-1">Value</b>
+            <span id="numberValue">0.00 &rarr; 0.00</span>
+          </div>
+          <div class="flex">
+            <b class="flex-1">Borrow</b>
+            <span id="numberBorrow">0.00 &rarr; 0.00</span>
+          </div>
+          <div class="flex">
+            <b class="flex-1">Collateral ($)</b>
+            <span id="numberCollateral">0.00 &rarr; 0.00</span>
+          </div>
+          <div class="flex">
+            <b class="flex-1">Col. ({{.token.Symbol}})</b>
+            <span id="numberCollateralToken">0.00 &rarr; 0.00</span>
+          </div>
+        </div>
+
+        <button class="button button-lg w-full" onclick="chain.onFarmEdit(event, '{{.positionManager}}', '{{.tab}}', '{{json .position}}', {{.token.Decimals}}, '{{.tokenAllowance.String}}')">
+          {{title .tab}}
+        </button>
+      </form>
+    </div>
+  {{end}}
+{{template "partials/footer" .}}

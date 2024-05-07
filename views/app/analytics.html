@@ -1,0 +1,109 @@
+{{template "partials/header" .}}
+  <h1>Analytics</h1>
+
+  <h2>Tokenomics</h2>
+  <div class="grid-2 mb-4">
+    <div class="card">
+      <div class="label">Price</div>
+      <div class="font-xl font-bold">
+        $ {{formatNumber .data.TokenPrice 18 4}}
+      </div>
+      <div class="flex mt-2">
+        <div class="label m-0 flex-1">Market Cap</div>
+        <div class="">
+          $ {{formatNumber .data.MarketCap 18 0}}
+        </div>
+      </div>
+      <div class="flex mt-2">
+        <div class="label m-0 flex-1">Fully Diluted</div>
+        <div class="">
+          $ {{formatNumber .data.MarketCapFullyDilluted 18 0}}
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="label">Circulating Supply</div>
+      <div class="font-xl font-bold">
+        {{formatNumber .data.SupplyCirculating 18 0}}
+      </div>
+      <div class="flex mt-2">
+        <div class="label m-0 flex-1">Max Supply</div>
+        <div class="">
+          {{formatNumber .data.SupplyMax 18 0}}
+        </div>
+      </div>
+      <div class="flex mt-2">
+        <div class="label m-0 flex-1">Total Supply</div>
+        <div class="">
+          {{formatNumber .data.SupplyTotal 18 0}}
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="card mb-6">
+    <div class="grid-4">
+      <div>
+        <div class="label">POL</div>
+        <div>{{formatNumber .data.SupplyPOL 18 0}}</div>
+      </div>
+      <div>
+        <div class="label">xRDO</div>
+        <div>{{formatNumber .data.SupplyXrdo 18 0}}</div>
+      </div>
+      <div>
+        <div class="label">Ecosystem</div>
+        <div>{{formatNumber .data.SupplyEcosystem 18 0}}</div>
+      </div>
+      <div>
+        <div class="label">Partners</div>
+        <div>{{formatNumber .data.SupplyPartners 18 0}}</div>
+      </div>
+      <div>
+        <div class="label">Team</div>
+        <div>{{formatNumber .data.SupplyTeam 18 0}}</div>
+      </div>
+      <div>
+        <div class="label">Multisig</div>
+        <div>{{formatNumber .data.SupplyMultisig 18 0}}</div>
+      </div>
+      <div>
+        <div class="label">Deployer</div>
+        <div>{{formatNumber .data.SupplyDeployer 18 0}}</div>
+      </div>
+    </div>
+  </div>
+
+  {{define "positions"}}
+    <div class="card p-0 mb-6">
+      <div class="card-grid-row grid-7">
+        <div class="label"># - Strategy</div>
+        <div class="label text-right">Value</div>
+        <div class="label text-right">Borrow</div>
+        <div class="label text-right">Basis</div>
+        <div class="label text-right">Profit</div>
+        <div class="label text-right">Profit %</div>
+        <div class="label text-right">Life</div>
+      </div>
+      {{range .}}
+        <div class="card-grid-row grid-7">
+          <div class="truncate"><b>#{{.Index}}</b></div>
+          <div class="text-right">{{formatNumber .SharesValue 18 0}}</div>
+          <div class="text-right">{{formatNumber .BorrowValue 6 0}}</div>
+          <div class="text-right">{{formatNumber .Amount 6 0}}</div>
+          <div class="text-right">{{formatNumber .Profit 18 0}}</div>
+          <div class="text-right">{{formatNumber .ProfitPercent 16 1}}%</div>
+          <div class="text-right">{{formatNumber .Life 18 2}}</div>
+        </div>
+      {{end}}
+    </div>
+  {{end}}
+
+  <h2>Large Positions</h2>
+  {{template "positions" .data.Largest}}
+
+  <h2>Profitable Positions</h2>
+  {{template "positions" .data.Profit}}
+
+  <h2>Positions Close To Liquidation</h2>
+  {{template "positions" .data.Danger}}
+{{template "partials/footer" .}}

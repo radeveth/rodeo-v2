@@ -1,0 +1,41 @@
+{{template "partials/header" .}}
+  <h1>Vesting</h1>
+
+  <div class="tabs mb-4" style="max-width:240px;">
+    <a class="tab{{if eq .tab "active"}} tab-active{{end}}" href="?tab=active">Active</a>
+    <a class="tab{{if eq .tab "completed"}} tab-active{{end}}" href="?tab=completed">Completed</a>
+  </div>
+
+  <div id="error" class="error hidden mb-4"></div>
+
+  {{if .vestings}}
+    <div class="card p-0">
+      <div class="card-grid-row grid-7">
+        <div class="label">Token</div>
+        <div class="label text-right">Total</div>
+        <div class="label text-right">Claimed</div>
+        <div class="label text-right">Claimable</div>
+        <div class="label text-right">Start</div>
+        <div class="label text-right">End</div>
+        <div class="label text-right"></div>
+      </div>
+      {{range .vestings}}
+        <div class="card-grid-row grid-7 items-center">
+          <div><b>RDO</b><br/><span class="font-sm text-faded">{{.source}}</span></div>
+          <div class="text-right">{{formatNumber .amount 18 2}}</div>
+          <div class="text-right">{{formatNumber .claimed 18 1}}</div>
+          <div class="text-right">{{formatNumber (.available.Sub .claimed) 18 1}}</div>
+          <div class="text-right">{{.start.Format "2006-01-02"}}</div>
+          <div class="text-right">{{.end.Format "2006-01-02"}}</div>
+          <div class="text-right">
+            <button class="button" {{if .claimed.Eq .amount}}disabled{{end}} onclick="chain.onVesting(event, '{{$.vestor}}', '{{.index}}')">Claim</button>
+          </div>
+        </div>
+      {{end}}
+    </div>
+  {{else}}
+    <div class="card py-24 text-center text-faded">
+      No vesting schedule for your address
+    </div>
+  {{end}}
+{{template "partials/footer" .}}

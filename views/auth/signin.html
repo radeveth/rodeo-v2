@@ -1,0 +1,16 @@
+{{template "partials/header" .}}
+
+<form novalidate method="post" class="auth">
+  <h1>Log in</h1>
+  {{if .errors}}
+    <div class="error mb-4">{{range .errors}}{{.}}<br />{{end}}</div>
+  {{end}}
+  <label class="label">Username</label>
+  <input class="input mb-4" name="username" value="{{.email}}" autofocus />
+  <label class="label">Password</label>
+  <input class="input mb-4" name="password" type="password" />
+  <div><button class="button mb-4" type="submit">Log in</button></div>
+  <a href="/forgot/">Forgot your password?</a>
+</form>
+
+{{template "partials/footer" .}}

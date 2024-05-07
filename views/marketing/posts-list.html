@@ -1,0 +1,13 @@
+{{template "partials/header" .}}
+
+<h1>Blog</h1>
+
+{{range .posts}}
+  <div class="blog-summary">
+    <h2><a href="/blog/{{.Slug}}/">{{.Title}}</a></h2>
+    <article>{{truncate (stripHtml (markdown .Content)) 350}}</article>
+    <time>{{.Created.Format "January 2, 2006"}}</time>
+  </div>
+{{end}}
+
+{{template "partials/footer" .}}

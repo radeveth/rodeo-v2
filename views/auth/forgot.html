@@ -1,0 +1,22 @@
+{{template "partials/header" .}}
+
+<form class="auth" novalidate method="post" class="auth">
+  <h1 class="f2">Forgotten Password</h1>
+  {{if .success}}
+    <div class="alert positive mb4">
+      We sent you an email with a link allowing you to reset your password.
+    </div>
+  {{else}}
+    {{if .errors}}
+      <div class="alert negative mb4">{{range .errors}}{{.}}<br />{{end}}</div>
+    {{end}}
+    <div class="mb4">
+      <label class="label">Email</label>
+      <input class="input" type="email" name="email" value="{{.email}}" autofocus />
+    </div>
+    <button class="button w-100 mb4" type="submit">Reset my password</button>
+  {{end}}
+  Remembered you password? <a href="/signin/">Sign in</a><br />
+</form>
+
+{{template "partials/footer" .}}

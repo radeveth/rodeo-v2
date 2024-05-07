@@ -1,0 +1,11 @@
+{{template "partials/header" .}}
+
+<a href="/blog/">&larr; Back</a>
+
+<h1>{{.post.Title}}</h1>
+
+<div class="text-faded text-sm mb-4">{{.post.Created.Format "January 2, 2006"}}</div>
+
+<div class="richtext">{{markdown .post.Content}}</div>
+
+{{template "partials/footer" .}}

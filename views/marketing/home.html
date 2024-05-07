@@ -1,0 +1,99 @@
+{{template "partials/header_marketing" .}}
+
+<div class="hero">
+  <div class="py-16">
+    <h1>Leveraged Yield Farming</h1>
+    <p class="mb-6 text-faded" style="max-width:600px;">Farms with easy, automated and secure leverage on all the top farms Arbitrum has to offer. Earn yield on majors in our lending pools with better APY that most other lending markets.</p>
+    <div>
+      <a href="/farm/" class="button button-lg button-1">Launch App</a>
+    </div>
+  </div>
+
+  <h1 id="overview">Farms</h1>
+
+  <div class="card p-0 mb-6">
+    <div class="card-grid-row grid-3">
+      <div class="label">Name</div>
+      <div class="label text-right">APY</div>
+      <div class="label text-right">TVL</div>
+    </div>
+    {{range .strategies}}
+      <div class="card-grid-row grid-3 items-center">
+        <div class="flex">
+          <div><img src="{{.Icon}}" width="28" class="mr-2" /></div>
+          <div>
+            <b>{{.Name}}</b><br/>
+            <span class="font-sm text-faded">{{.Protocol}}</span>
+          </div>
+        </div>
+        <div class="text-right">
+          {{formatNumber .Apy 16 1}}%<br/>
+          <span class="text-faded" style="text-decoration: line-through;">{{formatNumber .Apy 16 1}}%</span>
+        </div>
+        <div class="text-right">
+          {{formatNumber .TvlTotal 24 1}}M<br/>
+          <span class="text-faded">{{formatNumber .Tvl 21 1}}K</span>
+        </div>
+      </div>
+    {{end}}
+  </div>
+
+  <h1 id="why">Why Rodeo?</h1>
+  <p>Composable Yield Protocol: Rodeo is a DeFi protocol that allows users to earn yield on a diverse range of managed and passive investment strategies, though a simple user experience</p>
+  <div class="cards">
+    <div class="card content-card">
+      <h4>Leverage<span>Undercollateralized loans</span></h4>
+      <img src="/assets/why-leverage.png" />
+      <div>
+        Rodeo is one of the very few places in DeFi where you can borrow more capital than your collateral enabling high yield from leverage as high as 10x.
+      </div>
+    </div>
+    <div class="card content-card">
+      <h4>Lend<span>High interest on stables</span></h4>
+      <img src="/assets/why-lend.png" />
+      <div>
+        Rodeo lends stables to farmers getting high yield, enabling stables holders to safely collect higher yields than offered by competing money markets.
+      </div>
+    </div>
+    <div class="card content-card">
+      <h4>Composable Yield<span>Variety of integrated protocols</span></h4>
+      <img src="/assets/why-decentralized.png" />
+      <div>
+        Rodeo’s core leverage structure allows the secure and efficient integration of any sufficiently liquid and profitable yield strategy. Covering areas such as: GLP, Concentrated Liquidity, LSDs, Managed LP, Yield speculation and more
+      </div>
+    </div>
+  </div>
+
+  <h2 class="text-center" id="integrations">Integrations</h2>
+  <div class="home-icons-row">
+    <div class="home-icon">
+      <img src="/assets/protocols/gmx.png" />
+    </div>
+    <div class="home-icon">
+      <img src="/assets/protocols/uniswap.svg" />
+    </div>
+    <div class="home-icon">
+      <img src="/assets/protocols/sushiswap.png" />
+    </div>
+    <div class="home-icon">
+      <img src="/assets/protocols/traderjoe.png" />
+    </div>
+    <div class="home-icon">
+      <img src="/assets/protocols/kyberswap.png" />
+    </div>
+    <div class="home-icon">
+      <img src="/assets/protocols/curve.svg" />
+    </div>
+    <div class="home-icon">
+      <img src="/assets/protocols/balancer.svg" />
+    </div>
+    <div class="home-icon">
+      <img src="/assets/protocols/plutusdao.png" />
+    </div>
+    <div class="home-icon">
+      <img src="/assets/protocols/jonesdao.png" />
+    </div>
+  </div>
+</div>
+
+{{template "partials/footer" .}}

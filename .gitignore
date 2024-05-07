@@ -1,0 +1,7 @@
+server
+files
+node_modules
+contracts/out
+contracts/cache
+contracts/broadcast
+.env

@@ -1,0 +1,40 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link href="/static/favicon.ico" rel="icon" type="image/x-icon">
+<title>{{or .error "Server Error"}} | {{env "COMPANY_NAME"}}</title>
+<link rel="stylesheet" type="text/css" href="/assets/styles.css">
+<style type="text/css">
+.err {
+  width: 95%;
+  max-width: 800px;
+  margin: 10vh auto;
+}
+</style>
+</head>
+<body>
+  {{if not (eq (env "ENV") "development")}}
+    <div class="err error">
+      <h2>{{or .error "Server Error"}}</h2>
+    </div>
+  {{else}}
+    <div class="card" style="margin: 16px;">
+      <h1>Panic!</h1>
+      <h2>{{or .errorName .error}}</h2>
+      {{if .errorLine}}
+        <h3>{{.errorLine}}</h3>
+      {{end}}
+
+      <label class="label">Stack Trace</label>
+      <pre class="card">{{.stack}}</pre>
+
+      <label class="label">URL Params</label>
+      <pre class="card">{{json .paramsUrl}}</pre>
+
+      <label class="label">Form Params</label>
+      <pre class="card">{{json .paramsForm}}</pre>
+    </div>
+  {{end}}
+</div>
