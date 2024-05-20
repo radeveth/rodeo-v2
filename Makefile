@@ -28,5 +28,11 @@ ssh:
 logs:
 	ssh $(SSH_REMOTE) "journalctl -n 500 -f -u rodeo"
 
+deployCustom:
+  env forge script Deploy.s.sol:Deploy \
+      --rpc-url "https://rpc.tenderly.co/fork/f03d0d80-0f91-4f80-bfb5-eab2876ca861"  \
+      --private-key "04299b9939d3f947130394edbdba609f47273db7cc7a75aa309c3636eee739f7" \
+      --broadcast -vvvv
+
 %:
 	@:

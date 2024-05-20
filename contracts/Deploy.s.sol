@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
-
+import "forge-std/Script.sol"; // @audit added
 //import {Pool} from "./Pool.sol";
 import {Bank} from "./Bank.sol";
 import {Store} from "./Store.sol";
@@ -35,40 +35,41 @@ interface Multisig {
 }
 
 
-contract Deploy {
-    Hevm vm = Hevm(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
+contract Deploy is Script {
+    // Hevm vm = Hevm(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D); @audit commented code
 
     function run() external {
         vm.startBroadcast();
-
-        salaries();
+        (address isp, address inv) = deploy();
+        strategy(isp, inv);
+        //salaries(); @audit removed
     }
 
-    function stip() internal {
+    function stip() internal { // @audit stipend distribution by claim?
         address(0x08aa7480824f5B953A997d62a545382fE6071981).call(abi.encodeWithSignature("setMerkleRoot(uint256,bytes32)", 8, 0xa90ea1e0dd2c1ee7ad5cebb6866902002c8e69b6342e20607fc051e091a8f59e));
     }
 
     function debug() internal {
       vm.stopBroadcast();
       vm.startPrank(0x20dE070F1887f82fcE2bdCf5D6d9874091e6FAe9);
-      address(0x768778aB1B2c4E462172136eE2584Ea7494bcB81).call(abi.encodeWithSignature(
+      address(0x768778aB1B2c4E462172136eE2584Ea7494bcB81).call(abi.encodeWithSignature( // @audit opens a position
         "open(uint256,address,uint256,uint256,address)",
         1, 0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8, 5000000, 10000000, 0x20dE070F1887f82fcE2bdCf5D6d9874091e6FAe9
       ));
     }
 
-    function ms() internal {
+    function ms() internal { // @audit add multisig tx to 0x49D6628C87F2 calling setReserveRatio. Wrong parameters
         Multisig multisig = Multisig(0xaB7d6293CE715F12879B9fa7CBaBbFCE3BAc0A5a);
         multisig.add(0x49D6628C87F2f0E6A17edfD7E9DA95ED95a7d1B2, 0, abi.encodeWithSignature("setReserveRatio(uint256)", 8, 0xa90ea1e0dd2c1ee7ad5cebb6866902002c8e69b6342e20607fc051e091a8f59e));
     }
 
-    function strategy() internal {
+    function strategy(address isp, address i) internal { // @audit added params - deploy camelotV3Strategy
         address keeper = 0x3b1F14068Fa2AF4B08b578e80834bC031a52363D;
         address strategyHelper = 0x72f7101371201CeFd43Af026eEf1403652F115EE;
         address usdce = 0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8;
         address grail = 0x3d9907F9a368ad0a51Be60f7Da3b97cf940982D8;
-        address isp = 0xA9737E08e8cF6cf7baE8096fd32A4E11E1159ffb;
-        Investor i = Investor(0x780D46fef77ac5f83399BD2BE363125982A78973);
+        //address isp = 0xA9737E08e8cF6cf7baE8096fd32A4E11E1159ffb; @audit commented
+        //Investor i = Investor(0x780D46fef77ac5f83399BD2BE363125982A78973); @audit commented
         StrategyCamelotV3 s = new StrategyCamelotV3(
           usdce, strategyHelper,
           0x3CAaE25Ee616f2C8E13C74dA0813402eae3F496b, // xGRAIL
@@ -82,7 +83,8 @@ contract Deploy {
         );
         s.file("exec", address(i));
         s.file("exec", address(isp));
-        i.strategyUgrade(1, address(s));
+        //Investor(i).strategyUgrade(1, address(s)); @audit added interface and commented
+        Investor(i).strategyNew(1, address(s)); // @audit added
         //i.strategyNew(1, address(s));
         //i.strategySetCap(1, 25_000e18);
         s.file("rewardToken1", grail);
@@ -93,7 +95,7 @@ contract Deploy {
         s.mint(1e6);
     }
 
-    function whitelist() internal {
+    function whitelist() internal { //@audit add whitelist
         address deployer = 0x20dE070F1887f82fcE2bdCf5D6d9874091e6FAe9;
         Investor i = Investor(0x780D46fef77ac5f83399BD2BE363125982A78973);
         PositionManager pm = PositionManager(0x768778aB1B2c4E462172136eE2584Ea7494bcB81);
@@ -104,7 +106,7 @@ contract Deploy {
         w.file("whitelist", address(pm));
     }
 
-    function upgrade() internal {
+    function upgrade() internal { //@audit likely an upgrade test
         address oldi = 0x5cC6D18D4ca54Ff7e9a2aE2E0d45d8A04ABBAa8d;
         address strategyHelper = 0x72f7101371201CeFd43Af026eEf1403652F115EE;
         Bank p = Bank(0x34286e6BF46Fd4E68D95a7cF0C6ecf7180001a5D);
@@ -131,7 +133,7 @@ contract Deploy {
         require(isp.exec(oldi) == false, "not removed");
     }
 
-    function upgradeRevert() internal {
+    function upgradeRevert() internal { //@audit wut
         Bank p = Bank(0x34286e6BF46Fd4E68D95a7cF0C6ecf7180001a5D);
         Bank b = Bank(0xbC6519Ef876Fe8626602a399F9e1d8577610ffb4);
         Store s = Store(0xecC5E787E23c82099A52AD3f7C64Ccc68fc50cbA);
@@ -139,7 +141,7 @@ contract Deploy {
         PositionManager pm = PositionManager(0xA01EcDd5B099dbE9a2E890c4998EA68dBe8f44f2);
     }
 
-    function deploy() internal {
+    function deploy() internal returns(address,address){ //@audit added return value - deploy protocol backbone
         address deployer = 0x20dE070F1887f82fcE2bdCf5D6d9874091e6FAe9;
         address keeper = 0x3b1F14068Fa2AF4B08b578e80834bC031a52363D;
         address strategyHelper = 0x72f7101371201CeFd43Af026eEf1403652F115EE;
@@ -197,6 +199,7 @@ contract Deploy {
         PositionManager pm = new PositionManager(address(i));
         //IERC20(usdce).approve(address(pm), 0.5e6);
         //pm.open(1, usdce, 0.5e6, 1e6, deployer);
+        return (address(isp), address(i));
     }
 
     function salaries() internal {
@@ -211,7 +214,7 @@ contract Deploy {
         address jonas = 0x97A0E5872B47f31321fcaed57D293058bfA9C338;
         uint256 rdop = 0.06207e18;
         address[5] memory salariesAddress = [farmerc, frank, jimbo, yieldl, jonas];
-        uint256[5] memory salariesUsdc = [uint256(0), 0, 0, 1500e6, 250e6];
+        uint256[5] memory salariesUsdc = [uint256(0), 0, 0, 1500e6, 350e6];
         uint256[5] memory salariesRdo = [uint256(0), 0, 0, 0, 0];
         uint256[5] memory salariesXrdo = [uint256(22000e18), 14000e18, 11000e18, 750e18, 500e18];
         multisig.add(rdo, 0, abi.encodeWithSignature("approve(address,uint256)", xrdo, 48250e18*1e18/rdop));
@@ -227,7 +230,7 @@ contract Deploy {
     }
 }
 
-library console {
+/*library console {
     address constant CONSOLE_ADDRESS = address(0x000000000000000000636F6e736F6c652e6c6f67);
 
     function _sendLogPayload(bytes memory payload) private view {
@@ -258,4 +261,4 @@ library console {
     function log(string memory p0, uint p1) internal view {
         _sendLogPayload(abi.encodeWithSignature("log(string,uint)", p0, p1));
     }
-}
+}*/

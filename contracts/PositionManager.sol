@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.17;
 
-import {Base64} from "vendor/Base64.sol";
-import {Strings} from "vendor/Strings.sol";
+import {Base64} from "./vendor/Base64.sol";
+import {Strings} from "./vendor/Strings.sol";
 
 interface IERC20 {
     function decimals() external view returns (uint8);
