@@ -62,6 +62,10 @@ interface IWhitelist {
     function check(address) external view returns (bool);
 }
 
+/**
+ * @title Investor
+ * @dev Manages user investments, collateral, and strategy interactions within the Rodeo V2 Finance protocol.
+ */
 contract Investor {
     IStore public store;
     IHelper public helper;
@@ -125,9 +129,9 @@ contract Investor {
     error PositionNotLiquidatable();
 
     struct Strategy {
-      address implementation;
-      uint256 cap;
-      uint256 status;
+        address implementation;
+        uint256 cap;
+        uint256 status;
     }
 
     struct Position {
@@ -141,6 +145,11 @@ contract Investor {
         uint256 basis;
     }
 
+    /**
+     * @dev Constructor initializes the store and helper contracts.
+     * @param _store The address of the store contract.
+     * @param _helper The address of the helper contract.
+     */
     constructor(address _store, address _helper) {
         store = IStore(_store);
         helper = IHelper(_helper);
@@ -159,6 +168,11 @@ contract Investor {
         entered = false;
     }
 
+    /**
+     * @notice Updates contract configurations.
+     * @param what The configuration parameter to update.
+     * @param data The new address value.
+     */
     function file(bytes32 what, address data) external auth {
         if (what == "exec") {
             exec[data] = !exec[data];
@@ -185,6 +199,11 @@ contract Investor {
         emit File(what, data);
     }
 
+    /**
+     * @notice Updates contract configurations.
+     * @param what The configuration parameter to update.
+     * @param data The new uint256 value.
+     */
     function file(bytes32 what, uint256 data) external auth {
         if (what == "slippage") {
             if (data > 1e18) revert InvalidFile();
@@ -207,6 +226,11 @@ contract Investor {
         emit File(what, data);
     }
 
+    /**
+     * @notice Adds a new strategy.
+     * @param index The index of the strategy.
+     * @param implementation The address of the strategy implementation.
+     */
     function strategyNew(uint256 index, address implementation) external auth {
         if (store.getAddress(keccak256(abi.encode(index, STRATEGIES_ADDRESS))) != address(0)) {
             revert StrategyExists();
@@ -216,6 +240,11 @@ contract Investor {
         emit StrategyUpdate(index, implementation, 4, 0);
     }
 
+    /**
+     * @notice Upgrades an existing strategy.
+     * @param index The index of the strategy.
+     * @param implementation The address of the new strategy implementation.
+     */
     function strategyUgrade(uint256 index, address implementation) external auth {
         Strategy memory s = getStrategy(index);
         IStrategy(s.implementation).exit(implementation);
@@ -224,35 +253,71 @@ contract Investor {
         emit StrategyUpdate(index, implementation, s.status, s.cap);
     }
 
+    /**
+     * @notice Sets the status of a strategy.
+     * @param index The index of the strategy.
+     * @param status The new status of the strategy.
+     */
     function strategySetStatus(uint256 index, uint256 status) external auth {
         Strategy memory s = getStrategy(index);
         store.setUint(keccak256(abi.encode(index, STRATEGIES_STATUS)), status);
         emit StrategyUpdate(index, s.implementation, status, s.cap);
     }
 
+    /**
+     * @notice Sets the cap of a strategy.
+     * @param index The index of the strategy.
+     * @param cap The new cap of the strategy.
+     */
     function strategySetCap(uint256 index, uint256 cap) external auth {
         Strategy memory s = getStrategy(index);
         store.setUint(keccak256(abi.encode(index, STRATEGIES_CAP)), cap);
         emit StrategyUpdate(index, s.implementation, s.status, cap);
     }
 
+    /**
+     * @notice Sets the collateral factor for a token.
+     * @param token The address of the token.
+     * @param factor The new collateral factor.
+     */
     function collateralSetFactor(address token, uint256 factor) external auth {
         uint256 cap = store.getUint(keccak256(abi.encode(token, COLLATERAL_CAP)));
         store.setUint(keccak256(abi.encode(token, COLLATERAL_FACTOR)), factor);
         emit CollateralUpdate(token, factor, cap);
     }
 
+    /**
+     * @notice Sets the collateral cap for a token.
+     * @param token The address of the token.
+     * @param cap The new collateral cap.
+     */
     function collateralSetCap(address token, uint256 cap) external auth {
         uint256 factor = store.getUint(keccak256(abi.encode(token, COLLATERAL_FACTOR)));
         store.setUint(keccak256(abi.encode(token, COLLATERAL_CAP)), cap);
         emit CollateralUpdate(token, factor, cap);
     }
 
+    /**
+     * @notice Collects all tokens of a specified type from the contract.
+     * @param token The address of the token to collect.
+     */
     function collect(address token) external auth {
         IERC20(token).transfer(msg.sender, IERC20(token).balanceOf(address(this)));
     }
 
-    function open(uint256 strategy, address token, uint256 collateral, uint256 borrow) external loop returns (uint256) {
+    /**
+     * @notice Opens a new investment position.
+     * @param strategy The index of the strategy to use.
+     * @param token The address of the collateral token.
+     * @param collateral The amount of collateral.
+     * @param borrow The amount to borrow.
+     * @return id The ID of the new position.
+     */
+    function open(uint256 strategy, address token, uint256 collateral, uint256 borrow)
+        external
+        loop
+        returns (uint256)
+    {
         if (address(whitelist) != address(0)) {
             if (!whitelist.check(msg.sender)) revert NotWhitelisted();
         }
@@ -292,13 +357,19 @@ contract Investor {
         return id;
     }
 
+    /**
+     * @notice Edits an existing investment position.
+     * @param id The ID of the position to edit.
+     * @param borrow The amount to borrow or repay.
+     * @param collateral The amount of collateral to add or remove.
+     */
     function edit(uint256 id, int256 borrow, int256 collateral) external loop {
         IBank bank = IBank(store.getAddress(BANK));
         IPool pool = IPool(store.getAddress(POOL));
         int256 collateralAdjusted = collateral;
         address poolAsset = pool.asset();
         Position memory p = getPosition(id);
-        Strategy memory s = getStrategy(p.strategy); 
+        Strategy memory s = getStrategy(p.strategy);
         IStrategy si = IStrategy(s.implementation);
         if (p.owner != msg.sender) revert NotOwner();
         if (borrow < 0 && uint256(-borrow) > p.shares) revert InvalidParameters();
@@ -385,6 +456,11 @@ contract Investor {
         emit Edit(id, borrow, collateralAdjusted);
     }
 
+    /**
+     * @notice Calculates the repayment amount required to kill a position.
+     * @param id The ID of the position.
+     * @return The required repayment amount.
+     */
     function killRepayment(uint256 id) external view returns (uint256) {
         IPool pool = IPool(store.getAddress(POOL));
         Position memory p = getPosition(id);
@@ -393,11 +469,16 @@ contract Investor {
         return borrow + fee;
     }
 
+    /**
+     * @notice Kills a position, liquidating it if undercollateralized.
+     * @param id The ID of the position to kill.
+     * @return The address of the token and the data from the strategy proxy.
+     */
     function kill(uint256 id) external loop returns (address, bytes memory) {
         IBank bank = IBank(store.getAddress(BANK));
         IPool pool = IPool(store.getAddress(POOL));
         Position memory p = getPosition(id);
-        Strategy memory s = getStrategy(p.strategy); 
+        Strategy memory s = getStrategy(p.strategy);
         address poolAsset = pool.asset();
         if (_life(p) >= 1e18) revert PositionNotLiquidatable();
         if (store.getUint(STATUS) < STATUS_LIQUIDATE || s.status < STATUS_LIQUIDATE) revert WrongStatus();
@@ -443,6 +524,11 @@ contract Investor {
         return (p.token, data);
     }
 
+    /**
+     * @notice Returns the life (collateralization ratio) of a position.
+     * @param id The ID of the position.
+     * @return The life of the position.
+     */
     function life(uint256 id) external view returns (uint256) {
         Position memory p = getPosition(id);
         return _life(p);
@@ -463,6 +549,11 @@ contract Investor {
         return value * 1e18 / borrow;
     }
 
+    /**
+     * @notice Retrieves the details of a specified position.
+     * @param id The ID of the position.
+     * @return p The position details.
+     */
     function getPosition(uint256 id) public view returns (Position memory p) {
         p.owner = store.getAddress(keccak256(abi.encode(id, POSITIONS_OWNER)));
         p.start = store.getUint(keccak256(abi.encode(id, POSITIONS_START)));
@@ -485,6 +576,11 @@ contract Investor {
         store.setUint(keccak256(abi.encode(id, POSITIONS_BASIS)), p.basis);
     }
 
+    /**
+     * @notice Retrieves the details of a specified strategy.
+     * @param id The ID of the strategy.
+     * @return s The strategy details.
+     */
     function getStrategy(uint256 id) public view returns (Strategy memory s) {
         s.implementation = store.getAddress(keccak256(abi.encode(id, STRATEGIES_ADDRESS)));
         s.cap = store.getUint(keccak256(abi.encode(id, STRATEGIES_CAP)));
@@ -492,6 +588,10 @@ contract Investor {
         if (s.implementation == address(0)) revert UnknownStrategy();
     }
 
+    /**
+     * @notice Returns the address of the pool contract.
+     * @return The address of the pool contract.
+     */
     function getPool() public view returns (address) {
         return store.getAddress(POOL);
     }

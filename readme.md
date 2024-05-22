@@ -26,7 +26,7 @@ To build it and output it to `assets/app.js` run `npm run build` in the `support
 
 ## Contracts
 
-Contracts (in the `contracts/`) folder are built and deployed using [Foundry](https://book.getfoundry.sh/) with some common commands specified in the `makefile`.
+Contracts (in the `contracts/`) folder are built and deployed using [Foundry](https://book.getfoundry.sh/) with some common commands specified in the `commands/makefile`.
 
 We initially were trying to write contracts in the style of DAI's codebase but have since relaxed it a bit: we use long enough variable names to describe things, not just 3 letter, but still aim to be concise.
 

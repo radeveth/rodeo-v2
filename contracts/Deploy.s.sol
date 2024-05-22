@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
+
 import "forge-std/Script.sol"; // @audit added
 //import {Pool} from "./Pool.sol";
 import {Bank} from "./Bank.sol";
@@ -34,7 +35,6 @@ interface Multisig {
     function add(address target, uint256 value, bytes calldata data) external;
 }
 
-
 contract Deploy is Script {
     // Hevm vm = Hevm(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D); @audit commented code
 
@@ -45,25 +45,44 @@ contract Deploy is Script {
         //salaries(); @audit removed
     }
 
-    function stip() internal { // @audit stipend distribution by claim?
-        address(0x08aa7480824f5B953A997d62a545382fE6071981).call(abi.encodeWithSignature("setMerkleRoot(uint256,bytes32)", 8, 0xa90ea1e0dd2c1ee7ad5cebb6866902002c8e69b6342e20607fc051e091a8f59e));
+    function stip() internal {
+        // @audit stipend distribution by claim?
+        address(0x08aa7480824f5B953A997d62a545382fE6071981).call(
+            abi.encodeWithSignature(
+                "setMerkleRoot(uint256,bytes32)", 8, 0xa90ea1e0dd2c1ee7ad5cebb6866902002c8e69b6342e20607fc051e091a8f59e
+            )
+        );
     }
 
     function debug() internal {
-      vm.stopBroadcast();
-      vm.startPrank(0x20dE070F1887f82fcE2bdCf5D6d9874091e6FAe9);
-      address(0x768778aB1B2c4E462172136eE2584Ea7494bcB81).call(abi.encodeWithSignature( // @audit opens a position
-        "open(uint256,address,uint256,uint256,address)",
-        1, 0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8, 5000000, 10000000, 0x20dE070F1887f82fcE2bdCf5D6d9874091e6FAe9
-      ));
+        vm.stopBroadcast();
+        vm.startPrank(0x20dE070F1887f82fcE2bdCf5D6d9874091e6FAe9);
+        address(0x768778aB1B2c4E462172136eE2584Ea7494bcB81).call(
+            abi.encodeWithSignature( // @audit opens a position
+                "open(uint256,address,uint256,uint256,address)",
+                1,
+                0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8,
+                5000000,
+                10000000,
+                0x20dE070F1887f82fcE2bdCf5D6d9874091e6FAe9
+            )
+        );
     }
 
-    function ms() internal { // @audit add multisig tx to 0x49D6628C87F2 calling setReserveRatio. Wrong parameters
+    function ms() internal {
+        // @audit add multisig tx to 0x49D6628C87F2 calling setReserveRatio. Wrong parameters
         Multisig multisig = Multisig(0xaB7d6293CE715F12879B9fa7CBaBbFCE3BAc0A5a);
-        multisig.add(0x49D6628C87F2f0E6A17edfD7E9DA95ED95a7d1B2, 0, abi.encodeWithSignature("setReserveRatio(uint256)", 8, 0xa90ea1e0dd2c1ee7ad5cebb6866902002c8e69b6342e20607fc051e091a8f59e));
+        multisig.add(
+            0x49D6628C87F2f0E6A17edfD7E9DA95ED95a7d1B2,
+            0,
+            abi.encodeWithSignature(
+                "setReserveRatio(uint256)", 8, 0xa90ea1e0dd2c1ee7ad5cebb6866902002c8e69b6342e20607fc051e091a8f59e
+            )
+        );
     }
 
-    function strategy(address isp, address i) internal { // @audit added params - deploy camelotV3Strategy
+    function strategy(address isp, address i) internal {
+        // @audit added params - deploy camelotV3Strategy
         address keeper = 0x3b1F14068Fa2AF4B08b578e80834bC031a52363D;
         address strategyHelper = 0x72f7101371201CeFd43Af026eEf1403652F115EE;
         address usdce = 0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8;
@@ -71,15 +90,16 @@ contract Deploy is Script {
         //address isp = 0xA9737E08e8cF6cf7baE8096fd32A4E11E1159ffb; @audit commented
         //Investor i = Investor(0x780D46fef77ac5f83399BD2BE363125982A78973); @audit commented
         StrategyCamelotV3 s = new StrategyCamelotV3(
-          usdce, strategyHelper,
-          0x3CAaE25Ee616f2C8E13C74dA0813402eae3F496b, // xGRAIL
-          0x357Abb2d1Ef48D8F3afDA83D0515F75322d59DcA, // StrategyHelperUniswapV3
-          0x1F1Ca4e8236CD13032653391dB7e9544a6ad123E, // Gamma UniProxy Camelot
-          0x0Fc73040b26E9bC8514fA028D998E73A254Fa76E, // Camelot Quoter
-          0xd7Ef5Ac7fd4AAA7994F3bc1D273eAb1d1013530E, // Gamma Hypervisor ETH/USDC
-          0x3b6486154b9dAe942C393b1cB3d11E3395B02Df8, // Camelot NFTPool V3 ETH/USDC
-          0xaf88d065e77c8cC2239327C5EDb3A432268e5831, // USDC
-          abi.encodePacked(0xaf88d065e77c8cC2239327C5EDb3A432268e5831, 0x82aF49447D8a07e3bd95BD0d56f35241523fBab1)
+            usdce,
+            strategyHelper,
+            0x3CAaE25Ee616f2C8E13C74dA0813402eae3F496b, // xGRAIL
+            0x357Abb2d1Ef48D8F3afDA83D0515F75322d59DcA, // StrategyHelperUniswapV3
+            0x1F1Ca4e8236CD13032653391dB7e9544a6ad123E, // Gamma UniProxy Camelot
+            0x0Fc73040b26E9bC8514fA028D998E73A254Fa76E, // Camelot Quoter
+            0xd7Ef5Ac7fd4AAA7994F3bc1D273eAb1d1013530E, // Gamma Hypervisor ETH/USDC
+            0x3b6486154b9dAe942C393b1cB3d11E3395B02Df8, // Camelot NFTPool V3 ETH/USDC
+            0xaf88d065e77c8cC2239327C5EDb3A432268e5831, // USDC
+            abi.encodePacked(0xaf88d065e77c8cC2239327C5EDb3A432268e5831, 0x82aF49447D8a07e3bd95BD0d56f35241523fBab1)
         );
         s.file("exec", address(i));
         s.file("exec", address(isp));
@@ -95,7 +115,8 @@ contract Deploy is Script {
         s.mint(1e6);
     }
 
-    function whitelist() internal { //@audit add whitelist
+    function whitelist() internal {
+        //@audit add whitelist
         address deployer = 0x20dE070F1887f82fcE2bdCf5D6d9874091e6FAe9;
         Investor i = Investor(0x780D46fef77ac5f83399BD2BE363125982A78973);
         PositionManager pm = PositionManager(0x768778aB1B2c4E462172136eE2584Ea7494bcB81);
@@ -106,7 +127,8 @@ contract Deploy is Script {
         w.file("whitelist", address(pm));
     }
 
-    function upgrade() internal { //@audit likely an upgrade test
+    function upgrade() internal {
+        //@audit likely an upgrade test
         address oldi = 0x5cC6D18D4ca54Ff7e9a2aE2E0d45d8A04ABBAa8d;
         address strategyHelper = 0x72f7101371201CeFd43Af026eEf1403652F115EE;
         Bank p = Bank(0x34286e6BF46Fd4E68D95a7cF0C6ecf7180001a5D);
@@ -133,7 +155,8 @@ contract Deploy is Script {
         require(isp.exec(oldi) == false, "not removed");
     }
 
-    function upgradeRevert() internal { //@audit wut
+    function upgradeRevert() internal {
+        //@audit wut
         Bank p = Bank(0x34286e6BF46Fd4E68D95a7cF0C6ecf7180001a5D);
         Bank b = Bank(0xbC6519Ef876Fe8626602a399F9e1d8577610ffb4);
         Store s = Store(0xecC5E787E23c82099A52AD3f7C64Ccc68fc50cbA);
@@ -141,7 +164,8 @@ contract Deploy is Script {
         PositionManager pm = PositionManager(0xA01EcDd5B099dbE9a2E890c4998EA68dBe8f44f2);
     }
 
-    function deploy() internal returns(address,address){ //@audit added return value - deploy protocol backbone
+    function deploy() internal returns (address, address) {
+        //@audit added return value - deploy protocol backbone
         address deployer = 0x20dE070F1887f82fcE2bdCf5D6d9874091e6FAe9;
         address keeper = 0x3b1F14068Fa2AF4B08b578e80834bC031a52363D;
         address strategyHelper = 0x72f7101371201CeFd43Af026eEf1403652F115EE;
@@ -217,11 +241,29 @@ contract Deploy is Script {
         uint256[5] memory salariesUsdc = [uint256(0), 0, 0, 1500e6, 350e6];
         uint256[5] memory salariesRdo = [uint256(0), 0, 0, 0, 0];
         uint256[5] memory salariesXrdo = [uint256(22000e18), 14000e18, 11000e18, 750e18, 500e18];
-        multisig.add(rdo, 0, abi.encodeWithSignature("approve(address,uint256)", xrdo, 48250e18*1e18/rdop));
+        multisig.add(rdo, 0, abi.encodeWithSignature("approve(address,uint256)", xrdo, 48250e18 * 1e18 / rdop));
         for (uint256 i = 0; i < salariesAddress.length; i++) {
-            if (salariesUsdc[i] > 0) multisig.add(usdce, 0, abi.encodeWithSignature("transfer(address,uint256)", salariesAddress[i], salariesUsdc[i]));
-            if (salariesRdo[i] > 0) multisig.add(rdo, 0, abi.encodeWithSignature("transfer(address,uint256)", salariesAddress[i], salariesRdo[i]*1e18/rdop));
-            if (salariesXrdo[i] > 0) multisig.add(xrdo, 0, abi.encodeWithSignature("mint(uint256,address)", salariesXrdo[i]*1e18/rdop, salariesAddress[i]));
+            if (salariesUsdc[i] > 0) {
+                multisig.add(
+                    usdce, 0, abi.encodeWithSignature("transfer(address,uint256)", salariesAddress[i], salariesUsdc[i])
+                );
+            }
+            if (salariesRdo[i] > 0) {
+                multisig.add(
+                    rdo,
+                    0,
+                    abi.encodeWithSignature(
+                        "transfer(address,uint256)", salariesAddress[i], salariesRdo[i] * 1e18 / rdop
+                    )
+                );
+            }
+            if (salariesXrdo[i] > 0) {
+                multisig.add(
+                    xrdo,
+                    0,
+                    abi.encodeWithSignature("mint(uint256,address)", salariesXrdo[i] * 1e18 / rdop, salariesAddress[i])
+                );
+            }
         }
     }
 

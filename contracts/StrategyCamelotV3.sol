@@ -4,36 +4,91 @@ pragma solidity 0.8.17;
 import {TickMath} from "./vendor/TickMath.sol";
 import {LiquidityAmounts} from "./vendor/LiquidityAmounts.sol";
 
+/**
+ * @title StrategyCamelotV3
+ * @dev This contract implements a strategy for interacting with Camelot V3.
+ */
 contract StrategyCamelotV3 {
+    /// @notice The name of the strategy.
     string public name;
+
+    /// @notice Total shares issued by the strategy.
     uint256 public totalShares = 1_000_000;
+
+    /// @notice The slippage percentage for swaps.
     uint256 public slippage = 500;
+
+    /// @notice Reentrancy guard variable.
     bool internal entered;
+
+    /// @notice The ERC20 asset used by the strategy.
     IERC20 public asset;
+
+    /// @notice Helper contract for strategy operations.
     IStrategyHelper public strategyHelper;
+
+    /// @notice Mapping of addresses allowed to execute functions.
     mapping(address => bool) public exec;
+
+    /// @notice Mapping of keeper addresses.
     mapping(address => bool) public keepers;
 
+    /// @notice The xGrail contract instance.
     IXGrail public immutable xgrail;
+
+    /// @notice Helper contract for Uniswap V3 operations.
     IStrategyHelperUniswapV3 public immutable strategyHelperUniswapV3;
+
+    /// @notice The Uniswap proxy contract instance.
     IUniProxy public immutable uniProxy;
+
+    /// @notice The Quoter contract instance for price quoting.
     IQuoter public immutable quoter;
+
+    /// @notice The Hypervisor contract instance.
     IHypervisor public immutable hypervisor;
-    bytes public pathToLp; // UniV3 path from targetAsset to other asset
+
+    /// @notice The path to the liquidity pool.
+    bytes public pathToLp;
+
+    /// @notice The target asset address.
     address public targetAsset;
+
+    /// @notice The NFT pool contract instance.
     INFTPool public nftPool;
+
+    /// @notice The Nitro pool contract instance.
     INitroPool public nitroPool;
+
+    /// @notice The token ID for the NFT position.
     uint256 public tokenId;
+
+    /// @notice The time-weighted average price period.
     uint32 public twapPeriod = 43200;
+
+    /// @notice The first reward token address.
     address public rewardToken1;
+
+    /// @notice The second reward token address.
     address public rewardToken2;
+
+    /// @notice The third reward token address.
     address public rewardToken3;
 
+    /// @notice Emitted when a configuration is changed.
     event File(bytes32 indexed what, uint256 data);
     event File(bytes32 indexed what, address data);
+
+    /// @notice Emitted when shares are minted.
     event Mint(uint256 amount, uint256 shares);
+
+    /// @notice Emitted when shares are burned.
     event Burn(uint256 amount, uint256 shares);
+
+    /// @notice Emitted when shares are killed.
     event Kill(uint256 amount, uint256 shares);
+
+    /// @notice Emitted when earnings are realized.
     event Earn(uint256 tvl, uint256 profit);
 
     error NotKeeper();
@@ -45,6 +100,19 @@ contract StrategyCamelotV3 {
     error TwapPeriodTooLong();
     error TokenIdNeededFirst();
 
+    /**
+     * @dev Constructor to initialize the strategy.
+     * @param _asset The ERC20 asset address.
+     * @param _strategyHelper The strategy helper contract address.
+     * @param _xgrail The xGrail contract address.
+     * @param _strategyHelperUniswapV3 The Uniswap V3 helper contract address.
+     * @param _uniProxy The Uniswap proxy contract address.
+     * @param _quoter The Quoter contract address.
+     * @param _hypervisor The Hypervisor contract address.
+     * @param _nftPool The NFT pool contract address.
+     * @param _targetAsset The target asset address.
+     * @param _pathToLp The path to the liquidity pool.
+     */
     constructor(
         address _asset,
         address _strategyHelper,
@@ -75,6 +143,9 @@ contract StrategyCamelotV3 {
         }
     }
 
+    /**
+     * @dev Modifier to prevent reentrancy.
+     */
     modifier loop() {
         if (entered) revert NoReentering();
         entered = true;
@@ -82,11 +153,19 @@ contract StrategyCamelotV3 {
         entered = false;
     }
 
+    /**
+     * @dev Modifier to restrict access to authorized addresses.
+     */
     modifier auth() {
         if (!exec[msg.sender]) revert Unauthorized();
         _;
     }
 
+    /**
+     * @dev Updates configuration settings.
+     * @param what The configuration key.
+     * @param data The configuration value.
+     */
     function file(bytes32 what, address data) external auth {
         if (what == "exec") {
             exec[data] = !exec[data];
@@ -104,6 +183,11 @@ contract StrategyCamelotV3 {
         emit File(what, data);
     }
 
+    /**
+     * @dev Updates numerical configuration settings.
+     * @param what The configuration key.
+     * @param data The configuration value.
+     */
     function file(bytes32 what, uint256 data) external auth {
         if (what == "slippage") {
             slippage = data;
@@ -116,10 +200,18 @@ contract StrategyCamelotV3 {
         emit File(what, data);
     }
 
+    /**
+     * @dev Sets a new path to the liquidity pool.
+     * @param newPathToLp The new path to the liquidity pool.
+     */
     function setPathToLp(bytes calldata newPathToLp) external auth {
         pathToLp = newPathToLp;
     }
 
+    /**
+     * @dev Sets a new Nitro pool address.
+     * @param _nitroPool The new Nitro pool address.
+     */
     function setNitroPool(address _nitroPool) external auth {
         if (tokenId == 0) revert TokenIdNeededFirst();
         if (_nitroPool == address(0)) {
@@ -130,15 +222,29 @@ contract StrategyCamelotV3 {
         nitroPool = INitroPool(_nitroPool);
     }
 
+    /**
+     * @dev Redeems xGrail tokens.
+     * @param amount The amount of xGrail to redeem.
+     * @param duration The duration for which the xGrail is locked.
+     */
     function xgrailRedeem(uint256 amount, uint256 duration) external auth {
         xgrail.redeem(amount, duration);
     }
 
+    /**
+     * @dev Finalizes the xGrail redemption process.
+     * @param index The index of the redemption.
+     */
     function xgrailFinalizeRedeem(uint256 index) external auth {
         xgrail.finalizeRedeem(index);
     }
 
-    function mint(uint256 amount) external auth loop returns (uint256) {
+    /**
+     * @dev Mints new shares by depositing assets.
+     * @param amount The amount of assets to deposit.
+     * @return shares The amount of shares minted.
+     */
+    function mint(uint256 amount) external auth loop returns (uint256 shares) {
         asset.transferFrom(msg.sender, address(this), amount);
         address tgtAst = targetAsset;
         uint256 slp = slippage;
@@ -160,14 +266,18 @@ contract StrategyCamelotV3 {
 
         uint256 val = valueLiquidity() * liq / totalManagedAssets();
         if (val < strategyHelper.value(address(asset), amount) * (10000 - slp) / 10000) revert PriceSlipped();
-        uint256 shares = tma == 0 ? liq : liq * totalShares / tma;
+        shares = tma == 0 ? liq : liq * totalShares / tma;
 
         totalShares += shares;
         emit Mint(amount, shares);
-        return shares;
     }
 
-    function burn(uint256 shares) external auth loop returns (uint256) {
+    /**
+     * @dev Burns shares and withdraws assets.
+     * @param shares The amount of shares to burn.
+     * @return amount The amount of assets withdrawn.
+     */
+    function burn(uint256 shares) external auth loop returns (uint256 amount) {
         uint256 tma = totalManagedAssets();
         uint256 amt = (shares * tma) / totalShares;
         uint256 val = valueLiquidity() * amt / tma;
@@ -190,6 +300,12 @@ contract StrategyCamelotV3 {
         return bal;
     }
 
+    /**
+     * @dev Kills shares and transfers assets to a specified address.
+     * @param shares The amount of shares to kill.
+     * @param to The address to transfer the assets to.
+     * @return data The encoded data of the killed shares.
+     */
     function kill(uint256 shares, address to) external auth loop returns (bytes memory) {
         uint256 amount = shares * totalManagedAssets() / totalShares;
         unstake(amount);
@@ -203,6 +319,10 @@ contract StrategyCamelotV3 {
         return abi.encode(bytes32("camelotv3"), assets);
     }
 
+    /**
+     * @dev Stakes a specified amount of assets in the NFT pool.
+     * @param amount The amount of assets to stake.
+     */
     function stake(uint256 amount) internal {
         IERC20(address(hypervisor)).approve(address(nftPool), amount);
         if (tokenId != 0 && totalManagedAssets() > 0) {
@@ -215,6 +335,10 @@ contract StrategyCamelotV3 {
         }
     }
 
+    /**
+     * @dev Unstakes a specified amount of assets from the NFT pool.
+     * @param amount The amount of assets to unstake.
+     */
     function unstake(uint256 amount) internal {
         if (address(nitroPool) != address(0)) {
             nitroPool.withdraw(tokenId);
@@ -225,6 +349,9 @@ contract StrategyCamelotV3 {
         }
     }
 
+    /**
+     * @dev Realizes earnings from the strategy.
+     */
     function earn() external payable loop {
         if (!keepers[msg.sender]) revert NotKeeper();
         uint256 before = rate(totalShares);
@@ -273,6 +400,10 @@ contract StrategyCamelotV3 {
         emit Earn(current, current - min(current, before));
     }
 
+    /**
+     * @dev Exits the strategy by transferring assets to a specified strategy address.
+     * @param strategy The strategy address to transfer assets to.
+     */
     function exit(address strategy) external auth {
         if (tokenId == 0) return;
         if (address(nitroPool) != address(0)) {
@@ -281,6 +412,10 @@ contract StrategyCamelotV3 {
         nftPool.safeTransferFrom(address(this), strategy, tokenId, "");
     }
 
+    /**
+     * @dev Moves assets from an old strategy to the current strategy.
+     * @param old The old strategy address.
+     */
     function move(address old) external auth {
         nftPool = StrategyCamelotV3(old).nftPool();
         nitroPool = StrategyCamelotV3(old).nitroPool();
@@ -290,10 +425,22 @@ contract StrategyCamelotV3 {
         }
     }
 
+    /**
+     * @dev Gets the rate of shares in terms of managed assets.
+     * @param shares The amount of shares.
+     * @return The rate of shares.
+     */
     function rate(uint256 shares) public view returns (uint256) {
         return shares * valueLiquidity() / totalShares;
     }
 
+    /**
+     * @dev Quotes the amount of liquidity to add.
+     * @param amt The amount of assets.
+     * @param trgtAst The target asset address.
+     * @param path The path to the liquidity pool.
+     * @return The amounts of liquidity to add.
+     */
     function quoteAddLiquidity(uint256 amt, address trgtAst, bytes memory path) private returns (uint256, uint256) {
         uint256 lp0Amt = amt / 2;
         uint256 lp1Amt = amt - lp0Amt;
@@ -317,6 +464,13 @@ contract StrategyCamelotV3 {
         return (toLp0, toLp1);
     }
 
+    /**
+     * @dev Quotes and swaps assets.
+     * @param trgtAst The target asset address.
+     * @param amt The amount of assets.
+     * @param slp The slippage percentage.
+     * @return The amounts of assets swapped.
+     */
     function quoteAndSwap(address trgtAst, uint256 amt, uint256 slp) private returns (uint256 amt0, uint256 amt1) {
         bytes memory path = pathToLp;
         (uint256 toLp0, uint256 toLp1) = quoteAddLiquidity(amt, trgtAst, path);
@@ -335,12 +489,24 @@ contract StrategyCamelotV3 {
         }
     }
 
+    /**
+     * @dev Swaps assets.
+     * @param trgtAst The target asset address.
+     * @param ast The asset address.
+     * @param path The path to the liquidity pool.
+     * @param toLp The amount of assets to swap.
+     * @param slp The slippage percentage.
+     */
     function swap(address trgtAst, address ast, bytes memory path, uint256 toLp, uint256 slp) private {
         uint256 minOut = strategyHelper.convert(trgtAst, ast, toLp) * (10000 - slp) / 10000;
         IERC20(trgtAst).transfer(address(strategyHelperUniswapV3), toLp);
         strategyHelperUniswapV3.swap(trgtAst, path, toLp, minOut, address(this));
     }
 
+    /**
+     * @dev Calculates the value of the liquidity.
+     * @return The value of the liquidity.
+     */
     function valueLiquidity() private view returns (uint256) {
         uint32 period = twapPeriod;
         uint32[] memory secondsAgos = new uint32[](2);
@@ -367,12 +533,23 @@ contract StrategyCamelotV3 {
         return val0 + val1;
     }
 
+    /**
+     * @dev Calculates the total managed assets.
+     * @return The total managed assets.
+     */
     function totalManagedAssets() private view returns (uint256) {
         if (tokenId == 0) return 0;
         (uint256 amount,,,,,,,) = nftPool.getStakingPosition(tokenId);
         return amount;
     }
 
+    /**
+     * @dev Gets the position for a given tick range.
+     * @param midX96 The mid price.
+     * @param minTick The minimum tick.
+     * @param maxTick The maximum tick.
+     * @return The amounts of assets in the position.
+     */
     function getPosition(uint160 midX96, int24 minTick, int24 maxTick) private view returns (uint256, uint256) {
         bytes32 key;
         address owner = address(hypervisor);
@@ -387,6 +564,12 @@ contract StrategyCamelotV3 {
         return (amt0 + uint256(owed0), amt1 + uint256(owed1));
     }
 
+    /**
+     * @dev Handles receipt of an ERC721 token.
+     * @param _tokenId The ID of the received token.
+     * @param _data Additional data.
+     * @return The selector of the ERC721 receiver interface.
+     */
     function onERC721Received(address, address, uint256 _tokenId, bytes calldata) external returns (bytes4) {
         if (msg.sender == address(nftPool) && tokenId == 0) {
             tokenId = _tokenId;
@@ -394,18 +577,36 @@ contract StrategyCamelotV3 {
         return StrategyCamelotV3.onERC721Received.selector;
     }
 
+    /**
+     * @dev Handles NFT harvest.
+     * @return Always returns true.
+     */
     function onNFTHarvest(address, address, uint256, uint256, uint256) public pure returns (bool) {
         return true;
     }
 
+    /**
+     * @dev Handles addition to an NFT position.
+     * @return Always returns true.
+     */
     function onNFTAddToPosition(address, uint256, uint256) public pure returns (bool) {
         return true;
     }
 
+    /**
+     * @dev Handles NFT withdrawal.
+     * @return Always returns true.
+     */
     function onNFTWithdraw(address, uint256, uint256) public pure returns (bool) {
         return true;
     }
 
+    /**
+     * @dev Returns the minimum of two values.
+     * @param a The first value.
+     * @param b The second value.
+     * @return The minimum value.
+     */
     function min(uint256 a, uint256 b) internal pure returns (uint256) {
         return a < b ? a : b;
     }
@@ -430,8 +631,13 @@ interface IStrategyHelperUniswapV3 {
 }
 
 interface IUniProxy {
-    function deposit(uint256 deposit0, uint256 deposit1, address to, address pos, uint256[4] memory minIn) external returns (uint256 shares);
-    function getDepositAmount(address pos, address token, uint256 deposit) external view returns (uint256 amountStart, uint256 amountEnd);
+    function deposit(uint256 deposit0, uint256 deposit1, address to, address pos, uint256[4] memory minIn)
+        external
+        returns (uint256 shares);
+    function getDepositAmount(address pos, address token, uint256 deposit)
+        external
+        view
+        returns (uint256 amountStart, uint256 amountEnd);
 }
 
 interface IQuoter {
@@ -439,7 +645,9 @@ interface IQuoter {
 }
 
 interface IHypervisor is IERC20 {
-    function withdraw(uint256 shares, address to, address from, uint256[4] memory minAmounts) external returns (uint256 amount0, uint256 amount1);
+    function withdraw(uint256 shares, address to, address from, uint256[4] memory minAmounts)
+        external
+        returns (uint256 amount0, uint256 amount1);
     function pool() external view returns (IAlgebraPool);
     function token0() external view returns (IERC20);
     function token1() external view returns (IERC20);
@@ -456,11 +664,19 @@ interface INFTPool {
     function addToPosition(uint256 tokenId, uint256 amountToAdd) external;
     function withdrawFromPosition(uint256 tokenId, uint256 amountToWithdraw) external;
     function harvestPosition(uint256 tokenId) external;
-    function getStakingPosition(uint256 tokenId) external view returns (
-        uint256 amount, uint256 amountWithMultiplier, uint256 startLockTime,
-        uint256 lockDuration, uint256 lockMultiplier, uint256 rewardDebt,
-        uint256 boostPoints, uint256 totalMultiplier
-    );
+    function getStakingPosition(uint256 tokenId)
+        external
+        view
+        returns (
+            uint256 amount,
+            uint256 amountWithMultiplier,
+            uint256 startLockTime,
+            uint256 lockDuration,
+            uint256 lockMultiplier,
+            uint256 rewardDebt,
+            uint256 boostPoints,
+            uint256 totalMultiplier
+        );
 }
 
 interface INitroPool {
@@ -471,23 +687,29 @@ interface INitroPool {
 interface IAlgebraPool {
     function token0() external view returns (address);
     function token1() external view returns (address);
-    function getTimepoints(uint32[] calldata secondsAgos) external view returns (
-        int56[] memory tickCumulatives,
-        uint160[] memory secondsPerLiquidityCumulatives,
-        uint112[] memory volatilityCumulatives,
-        uint256[] memory volumePerAvgLiquiditys
-    );
-    function positions(bytes32 key) external view returns (
-        uint128 liquidityAmount,
-        uint32 lastLiquidityAddTimestamp,
-        uint256 innerFeeGrowth0Token,
-        uint256 innerFeeGrowth1Token,
-        uint128 fees0,
-        uint128 fees1
-    );
+    function getTimepoints(uint32[] calldata secondsAgos)
+        external
+        view
+        returns (
+            int56[] memory tickCumulatives,
+            uint160[] memory secondsPerLiquidityCumulatives,
+            uint112[] memory volatilityCumulatives,
+            uint256[] memory volumePerAvgLiquiditys
+        );
+    function positions(bytes32 key)
+        external
+        view
+        returns (
+            uint128 liquidityAmount,
+            uint32 lastLiquidityAddTimestamp,
+            uint256 innerFeeGrowth0Token,
+            uint256 innerFeeGrowth1Token,
+            uint128 fees0,
+            uint128 fees1
+        );
 }
 
 interface IXGrail {
-  function redeem(uint256 xGrailAmount, uint256 duration) external;
-  function finalizeRedeem(uint256 redeemIndex) external;
+    function redeem(uint256 xGrailAmount, uint256 duration) external;
+    function finalizeRedeem(uint256 redeemIndex) external;
 }

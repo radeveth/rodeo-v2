@@ -30,10 +30,11 @@ interface IStrategy {
 
 interface IInvestor {
     struct Strategy {
-      address implementation;
-      uint256 cap;
-      uint256 status;
+        address implementation;
+        uint256 cap;
+        uint256 status;
     }
+
     struct Position {
         address owner;
         uint256 start;
@@ -44,6 +45,7 @@ interface IInvestor {
         uint256 shares;
         uint256 basis;
     }
+
     function getPool() external view returns (address);
     function getStrategy(uint256 id) external view returns (Strategy memory);
     function getPosition(uint256 id) external view returns (Position memory);
@@ -59,8 +61,11 @@ interface IWhitelist {
 interface ERC721TokenReceiver {
     function onERC721Received(address, address, uint256, bytes calldata) external pure returns (bytes4);
 }
-
 /// @author Solmate (https://github.com/transmissions11/solmate/blob/main/src/tokens/ERC721.sol)
+/// @title Position Manager for Rodeo V2 Finance
+/// @notice Manages leveraged farming positions as NFTs
+/// @dev Uses ERC721 standard for representing positions
+
 contract PositionManager {
     string public constant name = "Rodeo V2 Position";
     string public constant symbol = "RP2";
@@ -88,6 +93,8 @@ contract PositionManager {
         mapping(uint256 => uint256) positions;
     }
 
+    /// @notice Initializes the Position Manager contract
+    /// @param _investor The address of the Investor contract
     constructor(address _investor) {
         investor = IInvestor(_investor);
         exec[msg.sender] = true;
@@ -98,6 +105,9 @@ contract PositionManager {
         _;
     }
 
+    /// @notice Updates contract configuration
+    /// @param what The configuration to update
+    /// @param data The new value for the configuration
     function file(bytes32 what, address data) external admin {
         if (what == "exec") {
             exec[data] = !exec[data];
@@ -111,21 +121,36 @@ contract PositionManager {
         emit File(what, data);
     }
 
+    /// @notice Returns the owner of a position
+    /// @param id The ID of the position
+    /// @return owner The address of the owner
     function ownerOf(uint256 id) public view returns (address owner) {
         require((owner = _ownerOf[id]) != address(0), "NOT_MINTED");
     }
 
+    /// @notice Returns the balance of positions for a given owner
+    /// @param owner The address of the owner
+    /// @return The number of positions owned by the address
     function balanceOf(address owner) public view returns (uint256) {
         require(owner != address(0), "ZERO_ADDRESS");
         return _balanceOf[owner];
     }
 
+    /// @notice Returns the ID of a position owned by an address at a given index
+    /// @param owner The address of the owner
+    /// @param index The index to query
+    /// @return The ID of the position
     function tokenOfOwnerByIndex(address owner, uint256 index) external view returns (uint256) {
         return _ownerIds[owner].values[index];
     }
 
+    /// @notice Returns a list of position IDs owned by an address within a given range
+    /// @param owner The address of the owner
+    /// @param start The start index
+    /// @param end The end index
+    /// @return v The list of position IDs
     function tokensOfOwner(address owner, uint256 start, uint256 end) external view returns (uint256[] memory v) {
-        v = new uint256[](end-start);
+        v = new uint256[](end - start);
         for (uint256 i = start; i < end; i++) {
             v[i - start] = _ownerIds[owner].values[i];
         }
@@ -140,6 +165,9 @@ contract PositionManager {
         _;
     }
 
+    /// @notice Approves an address to manage a specific position
+    /// @param spender The address to approve
+    /// @param id The ID of the position
     function approve(address spender, uint256 id) public {
         address owner = _ownerOf[id];
         require(msg.sender == owner || isApprovedForAll[owner][msg.sender], "NOT_AUTHORIZED");
@@ -147,18 +175,27 @@ contract PositionManager {
         emit Approval(owner, spender, id);
     }
 
+    /// @notice Sets or unsets approval for an operator to manage all positions of the caller
+    /// @param operator The address of the operator
+    /// @param approved The approval status
     function setApprovalForAll(address operator, bool approved) public {
         isApprovedForAll[msg.sender][operator] = approved;
         emit ApprovalForAll(msg.sender, operator, approved);
     }
 
+    /// @notice Moves a position ID from one address to another
+    /// @param from The current owner address
+    /// @param to The new owner address
+    /// @param id The ID of the position
     function moveId(address from, address to, uint256 id) internal {
         if (from != address(0)) {
-            unchecked { _balanceOf[from]--; }
+            unchecked {
+                _balanceOf[from]--;
+            }
             Ids storage i = _ownerIds[from];
             uint256 position = i.positions[id];
-            uint256 valueIndex = position-1;
-            uint256 lastIndex = i.values.length-1;
+            uint256 valueIndex = position - 1;
+            uint256 lastIndex = i.values.length - 1;
             if (valueIndex != lastIndex) {
                 uint256 lastValue = i.values[lastIndex];
                 i.values[valueIndex] = lastValue;
@@ -168,7 +205,9 @@ contract PositionManager {
             delete i.positions[id];
         }
         if (to != address(0)) {
-            unchecked { _balanceOf[to]++; }
+            unchecked {
+                _balanceOf[to]++;
+            }
             Ids storage i = _ownerIds[to];
             i.values.push(id);
             i.positions[id] = i.values.length;
@@ -179,12 +218,20 @@ contract PositionManager {
         emit Transfer(from, to, id);
     }
 
+    /// @notice Transfers a position from one address to another
+    /// @param from The current owner address
+    /// @param to The new owner address
+    /// @param id The ID of the position
     function transferFrom(address from, address to, uint256 id) public auth(id) {
         require(from == _ownerOf[id], "WRONG_FROM");
         require(to != address(0), "INVALID_RECIPIENT");
         moveId(from, to, id);
     }
 
+    /// @notice Safely transfers a position from one address to another
+    /// @param from The current owner address
+    /// @param to The new owner address
+    /// @param id The ID of the position
     function safeTransferFrom(address from, address to, uint256 id) public {
         transferFrom(from, to, id);
         require(
@@ -195,6 +242,11 @@ contract PositionManager {
         );
     }
 
+    /// @notice Safely transfers a position from one address to another with additional data
+    /// @param from The current owner address
+    /// @param to The new owner address
+    /// @param id The ID of the position
+    /// @param data Additional data to send with the transfer
     function safeTransferFrom(address from, address to, uint256 id, bytes calldata data) public {
         transferFrom(from, to, id);
         require(
@@ -205,13 +257,26 @@ contract PositionManager {
         );
     }
 
+    /// @notice Checks if the contract supports a given interface
+    /// @param interfaceId The interface ID to check
+    /// @return True if the interface is supported, false otherwise
     function supportsInterface(bytes4 interfaceId) public pure returns (bool) {
         return interfaceId == 0x01ffc9a7 // ERC165
             || interfaceId == 0x80ac58cd // ERC721
             || interfaceId == 0x5b5e139f; // ERC721Metadata
     }
 
-    function open(uint256 strategy, address token, uint256 collateral, uint256 borrow, address to) public returns (uint256) {
+    /// @notice Opens a new position
+    /// @param strategy The strategy to use
+    /// @param token The token to use as collateral
+    /// @param collateral The amount of collateral to deposit
+    /// @param borrow The amount to borrow
+    /// @param to The address to assign the position to
+    /// @return The ID of the new position
+    function open(uint256 strategy, address token, uint256 collateral, uint256 borrow, address to)
+        public
+        returns (uint256)
+    {
         if (address(whitelist) != address(0)) {
             if (!whitelist.check(msg.sender)) revert NotWhitelisted();
         }
@@ -230,6 +295,10 @@ contract PositionManager {
         return id;
     }
 
+    /// @notice Edits an existing position
+    /// @param id The ID of the position
+    /// @param borrow The new borrow amount
+    /// @param collateral The new collateral amount
     function edit(uint256 id, int256 borrow, int256 collateral) public auth(id) {
         IInvestor.Position memory p = investor.getPosition(id);
         if (collateral > 0) {
@@ -241,6 +310,8 @@ contract PositionManager {
         push(IPool(investor.getPool()).asset(), msg.sender);
     }
 
+    /// @notice Burns a position, removing it from the owner's balance
+    /// @param id The ID of the position
     function burn(uint256 id) public auth(id) {
         IInvestor.Position memory p = investor.getPosition(id);
         require(p.collateral == 0, "NOT_CLOSED");
@@ -249,26 +320,41 @@ contract PositionManager {
         moveId(owner, address(0), id);
     }
 
+    /// @notice Force burns a position, removing it from the owner's balance
+    /// @param id The ID of the position
     function forceBurn(uint256 id) public auth(id) {
         address owner = _ownerOf[id];
         require(owner != address(0), "NOT_MINTED");
         moveId(owner, address(0), id);
     }
 
+    /// @notice Approves the investor contract to spend a specified amount of a token
+    /// @param ast The address of the token
+    /// @param amt The amount to approve
     function rely(address ast, uint256 amt) internal {
         if (!IERC20(ast).approve(address(investor), amt)) revert TransferFailed();
     }
 
+    /// @notice Transfers a specified amount of a token from a user to the contract
+    /// @param ast The address of the token
+    /// @param usr The address of the user
+    /// @param amt The amount to transfer
     function pull(address ast, address usr, uint256 amt) internal {
         if (!IERC20(ast).transferFrom(usr, address(this), amt)) revert TransferFailed();
     }
 
+    /// @notice Transfers the balance of a token held by the contract to a user
+    /// @param ast The address of the token
+    /// @param usr The address of the user
     function push(address ast, address usr) internal {
         IERC20 asset = IERC20(ast);
         uint256 bal = asset.balanceOf(address(this));
         if (bal > 0 && !asset.transfer(usr, bal)) revert TransferFailed();
     }
 
+    /// @notice Returns the URI for a given position ID
+    /// @param id The ID of the position
+    /// @return The URI string
     function tokenURI(uint256 id) public view returns (string memory) {
         string memory image = generateImage(id);
         return string(
@@ -290,6 +376,9 @@ contract PositionManager {
         );
     }
 
+    /// @notice Generates an SVG image for a given position ID
+    /// @param id The ID of the position
+    /// @return The Base64 encoded SVG string
     function generateImage(uint256 id) private view returns (string memory) {
         return Base64.encode(
             abi.encodePacked(
@@ -306,6 +395,9 @@ contract PositionManager {
         );
     }
 
+    /// @notice Generates the header section of the SVG image for a given position ID
+    /// @param id The ID of the position
+    /// @return The SVG string for the header
     function generateHeader(uint256 id) private view returns (string memory) {
         IInvestor.Position memory p = investor.getPosition(id);
         IInvestor.Strategy memory s = investor.getStrategy(p.strategy);
@@ -320,6 +412,9 @@ contract PositionManager {
         );
     }
 
+    /// @notice Generates the value label of the SVG image for a given position ID
+    /// @param id The ID of the position
+    /// @return The SVG string for the value label
     function generateLabelVal(uint256 id) private view returns (string memory) {
         IInvestor.Position memory p = investor.getPosition(id);
         IInvestor.Strategy memory s = investor.getStrategy(p.strategy);
@@ -336,6 +431,9 @@ contract PositionManager {
         );
     }
 
+    /// @notice Generates the borrow label of the SVG image for a given position ID
+    /// @param id The ID of the position
+    /// @return The SVG string for the borrow label
     function generateLabelBor(uint256 id) private view returns (string memory) {
         IInvestor.Position memory p = investor.getPosition(id);
         address pool = investor.getPool();
@@ -356,6 +454,9 @@ contract PositionManager {
         );
     }
 
+    /// @notice Generates the life label of the SVG image for a given position ID
+    /// @param id The ID of the position
+    /// @return The SVG string for the life label
     function generateLabelLif(uint256 id) private view returns (string memory) {
         uint256 amt = investor.life(id);
         string memory str = formatNumber(amt, 18, 2);
@@ -371,6 +472,11 @@ contract PositionManager {
         );
     }
 
+    /// @notice Formats a number with a given number of decimals and fixed precision
+    /// @param n The number to format
+    /// @param d The number of decimals
+    /// @param f The fixed precision
+    /// @return The formatted number string
     function formatNumber(uint256 n, uint256 d, uint256 f) internal pure returns (string memory) {
         uint256 x = 10 ** d;
         uint256 r = n / (10 ** (d - f)) % (10 ** f);

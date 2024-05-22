@@ -1,50 +1,140 @@
-// SPDX-License-Identifier: MIT
+/// SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
+/**
+ * @title StrategyGMXGM
+ * @notice This contract interacts with the GMX protocol to manage investments,
+ * handle deposits, withdrawals, and perform various strategy functions.
+ */
 contract StrategyGMXGM {
+    /// @notice Name of the strategy
     string public name;
+
+    /// @notice Total number of shares
     uint256 public totalShares = 1_000_000;
+
+    /// @notice Slippage tolerance percentage (in basis points)
     uint256 public slippage = 500;
+
+    /// @dev Reentrancy guard
     bool internal entered;
+
+    /// @notice ERC20 asset token
     IERC20 public asset;
+
+    /// @notice Strategy helper contract
     IStrategyHelper public strategyHelper;
+
+    /// @notice Mapping to manage execution permissions
     mapping(address => bool) public exec;
+
+    /// @notice Mapping to manage keeper permissions
     mapping(address => bool) public keepers;
 
+    /// @notice Exchange router contract
     IExchangeRouter public exchangeRouter;
+
+    /// @notice Reader contract
     IReader public reader;
+
+    /// @notice Deposit handler contract address
     address public depositHandler;
+
+    /// @notice Withdrawal handler contract address
     address public withdrawalHandler;
+
+    /// @notice Deposit vault contract address
     address public depositVault;
+
+    /// @notice Withdrawal vault contract address
     address public withdrawalVault;
+
+    /// @notice Immutable address of the data store contract
     address public immutable dataStore;
+
+    /// @notice Immutable address of the market contract
     address public immutable market;
-    address public immutable tokenLong; // Volatile
-    address public immutable tokenShort; // Stable
-    uint256 public indexTokenDecimals; // Optional, used to set sythetic index token decimals
+
+    /// @notice Address of the volatile token (long position)
+    address public immutable tokenLong;
+
+    /// @notice Address of the stable token (short position)
+    address public immutable tokenShort;
+
+    /// @notice Decimals for synthetic index token (optional)
+    uint256 public indexTokenDecimals;
+
+    /// @notice Amount pending for deposit
     uint256 public amountPendingDeposit;
+
+    /// @notice Amount pending for withdrawal
     uint256 public amountPendingWithdraw;
-    uint256 public reserveRatio = 1000; // 10%
+
+    /// @notice Reserve ratio (in basis points)
+    uint256 public reserveRatio = 1000;
+
+    /// @notice Value for earning action (in wei)
     uint256 public earnActionValue = 0.0015675e18;
+
+    /// @notice Gas limit for callback execution
     uint256 public callbackGasLimit = 500_000;
 
+    /// @notice Event emitted when a configuration is changed
     event File(bytes32 indexed what, uint256 data);
+
+    /// @notice Event emitted when a configuration address is changed
     event File(bytes32 indexed what, address data);
+
+    /// @notice Event emitted when shares are minted
     event Mint(uint256 amount, uint256 shares);
+
+    /// @notice Event emitted when shares are burned
     event Burn(uint256 amount, uint256 shares);
+
+    /// @notice Event emitted when shares are killed
     event Kill(uint256 amount, uint256 shares);
+
+    /// @notice Event emitted when profit is earned
     event Earn(uint256 tvl, uint256 profit);
 
+    /// @notice Error for unauthorized keeper
     error NotKeeper();
+
+    /// @notice Error for invalid file parameter
     error InvalidFile();
+
+    /// @notice Error for reentrancy
     error NoReentering();
+
+    /// @notice Error for unauthorized access
     error Unauthorized();
+
+    /// @notice Error for invalid GMX address
     error NotGMX();
+
+    /// @notice Error for bad token
     error BadToken();
+
+    /// @notice Error for pending action
     error ActionPending();
+
+    /// @notice Error for failed ETH transfer
     error ErrorSendingETH();
+
+    /// @notice Error for wrong reserve ratio
     error WrongReserveRatio();
 
+    /**
+     * @notice Constructor to initialize the strategy contract
+     * @param _asset Address of the asset token
+     * @param _strategyHelper Address of the strategy helper contract
+     * @param _exchangeRouter Address of the exchange router contract
+     * @param _reader Address of the reader contract
+     * @param _depositHandler Address of the deposit handler contract
+     * @param _withdrawalHandler Address of the withdrawal handler contract
+     * @param _dataStore Address of the data store contract
+     * @param _market Address of the market contract
+     */
     constructor(
         address _asset,
         address _strategyHelper,
@@ -77,8 +167,14 @@ contract StrategyGMXGM {
         );
     }
 
+    /**
+     * @notice Fallback function to accept ETH payments
+     */
     receive() external payable {}
 
+    /**
+     * @notice Modifier to prevent reentrancy
+     */
     modifier loop() {
         if (entered) revert NoReentering();
         entered = true;
@@ -86,11 +182,19 @@ contract StrategyGMXGM {
         entered = false;
     }
 
+    /**
+     * @notice Modifier to check if the caller is authorized
+     */
     modifier auth() {
         if (!exec[msg.sender]) revert Unauthorized();
         _;
     }
 
+    /**
+     * @notice Function to update contract configurations with address parameters
+     * @param what The configuration key
+     * @param data The address value to set
+     */
     function file(bytes32 what, address data) external auth {
         if (what == "exec") {
             exec[data] = !exec[data];
@@ -112,6 +216,11 @@ contract StrategyGMXGM {
         emit File(what, data);
     }
 
+    /**
+     * @notice Function to update contract configurations with uint256 parameters
+     * @param what The configuration key
+     * @param data The uint256 value to set
+     */
     function file(bytes32 what, uint256 data) external auth {
         if (what == "slippage") {
             slippage = data;
@@ -130,16 +239,28 @@ contract StrategyGMXGM {
         emit File(what, data);
     }
 
+    /**
+     * @notice Function to withdraw ETH from the contract
+     */
     function withdrawEth() external auth {
         (bool success,) = address(msg.sender).call{value: address(this).balance}("");
         if (!success) revert ErrorSendingETH();
     }
 
+    /**
+     * @notice Function to withdraw airdropped tokens
+     * @param token The address of the token to withdraw
+     */
     function withdrawAirdrop(address token) external auth {
-      if (token == address(market) || token == tokenShort || token == tokenLong) revert BadToken();
-      IERC20(token).transfer(msg.sender, IERC20(token).balanceOf(address(this)));
+        if (token == address(market) || token == tokenShort || token == tokenLong) revert BadToken();
+        IERC20(token).transfer(msg.sender, IERC20(token).balanceOf(address(this)));
     }
 
+    /**
+     * @notice Function to mint new shares
+     * @param amount The amount of asset to mint shares for
+     * @return The number of shares minted
+     */
     function mint(uint256 amount) external auth loop returns (uint256) {
         uint256 slp = slippage;
         uint256 tot = totalShares;
@@ -156,6 +277,11 @@ contract StrategyGMXGM {
         return shares;
     }
 
+    /**
+     * @notice Function to burn shares
+     * @param shares The number of shares to burn
+     * @return The amount of asset received from burning the shares
+     */
     function burn(uint256 shares) external auth loop returns (uint256) {
         uint256 slp = slippage;
         uint256 val = rate(shares);
@@ -168,6 +294,12 @@ contract StrategyGMXGM {
         return bal;
     }
 
+    /**
+     * @notice Function to kill shares
+     * @param shares The number of shares to kill
+     * @param to The address to send the assets to
+     * @return The data from the kill action
+     */
     function kill(uint256 shares, address to) external auth loop returns (bytes memory) {
         uint256 value = rate(shares);
         uint256 amount = (value * (10 ** IERC20(tokenShort).decimals())) / strategyHelper.price(tokenShort);
@@ -181,6 +313,9 @@ contract StrategyGMXGM {
         return abi.encode(bytes32("gmxgm"), assets);
     }
 
+    /**
+     * @notice Function to perform earning actions
+     */
     function earn() external payable loop {
         if (!keepers[msg.sender]) revert NotKeeper();
         uint256 before = rate(totalShares);
@@ -280,6 +415,10 @@ contract StrategyGMXGM {
         emit Earn(current, current - min(current, before));
     }
 
+    /**
+     * @notice Function to exit from the strategy
+     * @param strategy The address of the strategy to exit
+     */
     function exit(address strategy) external auth {
         if (amountPendingDeposit != 0 || amountPendingWithdraw != 0) {
             revert ActionPending();
@@ -289,8 +428,17 @@ contract StrategyGMXGM {
         IERC20(tokenShort).transfer(strategy, IERC20(tokenShort).balanceOf(address(this)));
     }
 
+    /**
+     * @notice Function to move assets to a new strategy
+     * @param old The address of the old strategy
+     */
     function move(address old) external auth {}
 
+    /**
+     * @notice Function to calculate the rate of shares
+     * @param shares The number of shares
+     * @return The rate of the shares
+     */
     function rate(uint256 shares) public view returns (uint256) {
         uint256 val = strategyHelper.value(tokenLong, IERC20(tokenLong).balanceOf(address(this)));
         val += strategyHelper.value(tokenShort, IERC20(tokenShort).balanceOf(address(this)));
@@ -301,6 +449,11 @@ contract StrategyGMXGM {
         return shares * val / totalShares;
     }
 
+    /**
+     * @notice Function to get the market token price
+     * @param isDeposit Whether the price is for a deposit
+     * @return The market token price
+     */
     function marketTokenPrice(bool isDeposit) public view returns (uint256) {
         IReader r = reader;
         address store = dataStore;
@@ -319,9 +472,18 @@ contract StrategyGMXGM {
         return price < 0 ? 0 : uint256(price) / 1e12;
     }
 
+    /// @notice Constant for max PnL factor for deposits
     bytes32 constant MAX_PNL_FACTOR_FOR_DEPOSITS = keccak256(abi.encode("MAX_PNL_FACTOR_FOR_DEPOSITS"));
+
+    /// @notice Constant for max PnL factor for withdrawals
     bytes32 constant MAX_PNL_FACTOR_FOR_WITHDRAWALS = keccak256(abi.encode("MAX_PNL_FACTOR_FOR_WITHDRAWALS"));
 
+    /**
+     * @notice Internal function to get the GMX price
+     * @param token The address of the token
+     * @param isIndex Whether the token is an index token
+     * @return The price properties of the token
+     */
     function gmxPrice(address token, bool isIndex) internal view returns (IPrice.Props memory) {
         uint256 decimals = isIndex ? indexTokenDecimals : 0;
         if (decimals == 0) {
@@ -332,17 +494,40 @@ contract StrategyGMXGM {
         return IPrice.Props({min: price, max: price});
     }
 
-    function afterDepositExecution(bytes32, IDeposit.Props memory, IEventUtils.EventLogData memory) external {
+    /**
+     * @notice Function to handle deposit execution
+     * @param props The properties of the deposit
+     * @param eventLog The event log data
+     */
+    function afterDepositExecution(bytes32, IDeposit.Props memory props, IEventUtils.EventLogData memory eventLog)
+        external
+    {
         if (msg.sender != depositHandler) revert NotGMX();
         amountPendingDeposit = 0;
     }
 
-    function afterDepositCancellation(bytes32, IDeposit.Props memory, IEventUtils.EventLogData memory) external {
+    /**
+     * @notice Function to handle deposit cancellation
+     * @param props The properties of the deposit
+     * @param eventLog The event log data
+     */
+    function afterDepositCancellation(bytes32, IDeposit.Props memory props, IEventUtils.EventLogData memory eventLog)
+        external
+    {
         if (msg.sender != depositHandler) revert NotGMX();
         amountPendingDeposit = 0;
     }
 
-    function afterWithdrawalExecution(bytes32, IWithdrawal.Props memory, IEventUtils.EventLogData memory) external {
+    /**
+     * @notice Function to handle withdrawal execution
+     * @param props The properties of the withdrawal
+     * @param eventLog The event log data
+     */
+    function afterWithdrawalExecution(
+        bytes32,
+        IWithdrawal.Props memory, /*props */
+        IEventUtils.EventLogData memory /* eventLog */
+    ) external {
         if (msg.sender != withdrawalHandler) revert NotGMX();
         amountPendingWithdraw = 0;
         uint256 bal = IERC20(tokenLong).balanceOf(address(this));
@@ -350,11 +535,26 @@ contract StrategyGMXGM {
         try strategyHelper.swap(tokenLong, tokenShort, bal, slippage, address(this)) {} catch {}
     }
 
-    function afterWithdrawalCancellation(bytes32, IWithdrawal.Props memory, IEventUtils.EventLogData memory) external {
+    /**
+     * @notice Function to handle withdrawal cancellation
+     * @param props The properties of the withdrawal
+     * @param eventLog The event log data
+     */
+    function afterWithdrawalCancellation(
+        bytes32,
+        IWithdrawal.Props memory, /* props */
+        IEventUtils.EventLogData memory /* eventLog */
+    ) external {
         if (msg.sender != withdrawalHandler) revert NotGMX();
         amountPendingWithdraw = 0;
     }
 
+    /**
+     * @notice Internal function to get the minimum of two values
+     * @param a The first value
+     * @param b The second value
+     * @return The minimum value
+     */
     function min(uint256 a, uint256 b) internal pure returns (uint256) {
         return a < b ? a : b;
     }
@@ -381,13 +581,10 @@ interface IHandler {
 }
 
 interface IPriceFeed {
-    function latestRoundData() external view returns (
-        uint80 roundId,
-        int256 answer,
-        uint256 startedAt,
-        uint256 updatedAt,
-        uint80 answeredInRound
-    );
+    function latestRoundData()
+        external
+        view
+        returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound);
 }
 
 interface IDataStore {
