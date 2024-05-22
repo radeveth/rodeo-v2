@@ -41,7 +41,13 @@ interface IHelper {
     function price(address) external view returns (uint256);
     function value(address, uint256) external view returns (uint256);
     function convert(address, address, uint256) external view returns (uint256);
-    function swap(address, address, uint256, uint256, address) external returns (uint256);
+    function swap(
+        address,
+        address,
+        uint256,
+        uint256,
+        address
+    ) external returns (uint256);
 }
 
 interface IStrategy {
@@ -86,27 +92,52 @@ contract Investor {
     bytes32 constant STATUS = keccak256(abi.encode("STATUS"));
     bytes32 constant BANK = keccak256(abi.encode("BANK"));
     bytes32 constant POOL = keccak256(abi.encode("POOL"));
-    bytes32 constant STRATEGIES_ADDRESS = keccak256(abi.encode("STRATEGIES_ADDRESS"));
+    bytes32 constant STRATEGIES_ADDRESS =
+        keccak256(abi.encode("STRATEGIES_ADDRESS"));
     bytes32 constant STRATEGIES_CAP = keccak256(abi.encode("STRATEGIES_CAP"));
-    bytes32 constant STRATEGIES_STATUS = keccak256(abi.encode("STRATEGIES_STATUS"));
-    bytes32 constant COLLATERAL_FACTOR = keccak256(abi.encode("COLLATERAL_FACTOR"));
+    bytes32 constant STRATEGIES_STATUS =
+        keccak256(abi.encode("STRATEGIES_STATUS"));
+    bytes32 constant COLLATERAL_FACTOR =
+        keccak256(abi.encode("COLLATERAL_FACTOR"));
     bytes32 constant COLLATERAL_CAP = keccak256(abi.encode("COLLATERAL_CAP"));
     bytes32 constant POSITIONS = keccak256(abi.encode("POSITIONS"));
     bytes32 constant POSITIONS_OWNER = keccak256(abi.encode("POSITIONS_OWNER"));
     bytes32 constant POSITIONS_START = keccak256(abi.encode("POSITIONS_START"));
-    bytes32 constant POSITIONS_STRATEGY = keccak256(abi.encode("POSITIONS_STRATEGY"));
+    bytes32 constant POSITIONS_STRATEGY =
+        keccak256(abi.encode("POSITIONS_STRATEGY"));
     bytes32 constant POSITIONS_TOKEN = keccak256(abi.encode("POSITIONS_TOKEN"));
-    bytes32 constant POSITIONS_COLLATERAL = keccak256(abi.encode("POSITIONS_COLLATERAL"));
+    bytes32 constant POSITIONS_COLLATERAL =
+        keccak256(abi.encode("POSITIONS_COLLATERAL"));
     bytes32 constant POSITIONS_BASIS = keccak256(abi.encode("POSITIONS_BASIS"));
-    bytes32 constant POSITIONS_SHARES = keccak256(abi.encode("POSITIONS_SHARES"));
-    bytes32 constant POSITIONS_BORROW = keccak256(abi.encode("POSITIONS_BORROW"));
+    bytes32 constant POSITIONS_SHARES =
+        keccak256(abi.encode("POSITIONS_SHARES"));
+    bytes32 constant POSITIONS_BORROW =
+        keccak256(abi.encode("POSITIONS_BORROW"));
 
     event File(bytes32 indexed what, uint256 data);
     event File(bytes32 indexed what, address data);
-    event Open(uint256 indexed id, uint256 borrow, uint256 collateral, uint256 strategy, address token);
+    event Open(
+        uint256 indexed id,
+        uint256 borrow,
+        uint256 collateral,
+        uint256 strategy,
+        address token
+    );
     event Edit(uint256 indexed id, int256 borrow, int256 collateral);
-    event Kill(uint256 indexed id, uint256 borrow, uint256 value, uint256 collateral, uint256 shares, uint256 fee);
-    event StrategyUpdate(uint256 indexed index, address implementation, uint256 status, uint256 cap);
+    event Kill(
+        uint256 indexed id,
+        uint256 borrow,
+        uint256 value,
+        uint256 collateral,
+        uint256 shares,
+        uint256 fee
+    );
+    event StrategyUpdate(
+        uint256 indexed index,
+        address implementation,
+        uint256 status,
+        uint256 cap
+    );
     event CollateralUpdate(address indexed token, uint256 factor, uint256 cap);
 
     error NotOwner();
@@ -232,10 +263,17 @@ contract Investor {
      * @param implementation The address of the strategy implementation.
      */
     function strategyNew(uint256 index, address implementation) external auth {
-        if (store.getAddress(keccak256(abi.encode(index, STRATEGIES_ADDRESS))) != address(0)) {
+        if (
+            store.getAddress(
+                keccak256(abi.encode(index, STRATEGIES_ADDRESS))
+            ) != address(0)
+        ) {
             revert StrategyExists();
         }
-        store.setAddress(keccak256(abi.encode(index, STRATEGIES_ADDRESS)), implementation);
+        store.setAddress(
+            keccak256(abi.encode(index, STRATEGIES_ADDRESS)),
+            implementation
+        );
         store.setUint(keccak256(abi.encode(index, STRATEGIES_STATUS)), 4);
         emit StrategyUpdate(index, implementation, 4, 0);
     }
@@ -245,11 +283,17 @@ contract Investor {
      * @param index The index of the strategy.
      * @param implementation The address of the new strategy implementation.
      */
-    function strategyUgrade(uint256 index, address implementation) external auth {
+    function strategyUgrade(
+        uint256 index,
+        address implementation
+    ) external auth {
         Strategy memory s = getStrategy(index);
         IStrategy(s.implementation).exit(implementation);
         IStrategy(implementation).move(s.implementation);
-        store.setAddress(keccak256(abi.encode(index, STRATEGIES_ADDRESS)), implementation);
+        store.setAddress(
+            keccak256(abi.encode(index, STRATEGIES_ADDRESS)),
+            implementation
+        );
         emit StrategyUpdate(index, implementation, s.status, s.cap);
     }
 
@@ -281,7 +325,9 @@ contract Investor {
      * @param factor The new collateral factor.
      */
     function collateralSetFactor(address token, uint256 factor) external auth {
-        uint256 cap = store.getUint(keccak256(abi.encode(token, COLLATERAL_CAP)));
+        uint256 cap = store.getUint(
+            keccak256(abi.encode(token, COLLATERAL_CAP))
+        );
         store.setUint(keccak256(abi.encode(token, COLLATERAL_FACTOR)), factor);
         emit CollateralUpdate(token, factor, cap);
     }
@@ -292,7 +338,9 @@ contract Investor {
      * @param cap The new collateral cap.
      */
     function collateralSetCap(address token, uint256 cap) external auth {
-        uint256 factor = store.getUint(keccak256(abi.encode(token, COLLATERAL_FACTOR)));
+        uint256 factor = store.getUint(
+            keccak256(abi.encode(token, COLLATERAL_FACTOR))
+        );
         store.setUint(keccak256(abi.encode(token, COLLATERAL_CAP)), cap);
         emit CollateralUpdate(token, factor, cap);
     }
@@ -302,7 +350,10 @@ contract Investor {
      * @param token The address of the token to collect.
      */
     function collect(address token) external auth {
-        IERC20(token).transfer(msg.sender, IERC20(token).balanceOf(address(this)));
+        IERC20(token).transfer(
+            msg.sender,
+            IERC20(token).balanceOf(address(this))
+        );
     }
 
     /**
@@ -313,11 +364,12 @@ contract Investor {
      * @param borrow The amount to borrow.
      * @return id The ID of the new position.
      */
-    function open(uint256 strategy, address token, uint256 collateral, uint256 borrow)
-        external
-        loop
-        returns (uint256)
-    {
+    function open(
+        uint256 strategy,
+        address token,
+        uint256 collateral,
+        uint256 borrow
+    ) external loop returns (uint256) {
         if (address(whitelist) != address(0)) {
             if (!whitelist.check(msg.sender)) revert NotWhitelisted();
         }
@@ -325,10 +377,16 @@ contract Investor {
         lastBlock[id] = block.number;
         Strategy memory s = getStrategy(strategy);
         IStrategy si = IStrategy(s.implementation);
-        if (store.getUint(STATUS) < STATUS_LIVE || s.status < STATUS_LIVE) revert WrongStatus();
-        uint256 collateralCap = store.getUint(keccak256(abi.encode(token, COLLATERAL_CAP)));
+        if (store.getUint(STATUS) < STATUS_LIVE || s.status < STATUS_LIVE)
+            revert WrongStatus();
+        uint256 collateralCap = store.getUint(
+            keccak256(abi.encode(token, COLLATERAL_CAP))
+        );
         if (collateralCap == 0) revert UnknownCollateral();
-        if (IERC20(token).balanceOf(store.getAddress(BANK)) + collateral > collateralCap) {
+        if (
+            IERC20(token).balanceOf(store.getAddress(BANK)) + collateral >
+            collateralCap
+        ) {
             revert CollateralOverCap();
         }
 
@@ -372,17 +430,24 @@ contract Investor {
         Strategy memory s = getStrategy(p.strategy);
         IStrategy si = IStrategy(s.implementation);
         if (p.owner != msg.sender) revert NotOwner();
-        if (borrow < 0 && uint256(-borrow) > p.shares) revert InvalidParameters();
+        if (borrow < 0 && uint256(-borrow) > p.shares)
+            revert InvalidParameters();
         if (borrow > 0 && p.shares == 0) revert InvalidParameters();
-        if (collateral < 0 && uint256(-collateral) > p.collateral) revert InvalidParameters();
+        if (collateral < 0 && uint256(-collateral) > p.collateral)
+            revert InvalidParameters();
         if (lastBlock[id] == block.number) revert NoEditingInSameBlock();
         lastBlock[id] = block.number;
         {
             uint256 status = store.getUint(STATUS);
-            if (borrow > 0 && (status < STATUS_LIVE || s.status < STATUS_LIVE)) {
+            if (
+                borrow > 0 && (status < STATUS_LIVE || s.status < STATUS_LIVE)
+            ) {
                 revert WrongStatus();
             }
-            if (borrow <= 0 && (status < STATUS_WITHDRAW || s.status < STATUS_WITHDRAW)) {
+            if (
+                borrow <= 0 &&
+                (status < STATUS_WITHDRAW || s.status < STATUS_WITHDRAW)
+            ) {
                 revert WrongStatus();
             }
         }
@@ -391,8 +456,13 @@ contract Investor {
         if (collateral > 0) {
             pullToBank(p.token, msg.sender, uint256(collateral));
             p.collateral = p.collateral + uint256(collateral);
-            uint256 collateralCap = store.getUint(keccak256(abi.encode(p.token, COLLATERAL_CAP)));
-            if (IERC20(p.token).balanceOf(store.getAddress(BANK)) > collateralCap) {
+            uint256 collateralCap = store.getUint(
+                keccak256(abi.encode(p.token, COLLATERAL_CAP))
+            );
+            if (
+                IERC20(p.token).balanceOf(store.getAddress(BANK)) >
+                collateralCap
+            ) {
                 revert CollateralOverCap();
             }
         }
@@ -403,21 +473,33 @@ contract Investor {
             uint256 amount = strategyProxy.burn(address(si), uint256(-borrow));
             p.shares = p.shares - uint256(-borrow);
             uint256 index = pool.getUpdatedIndex();
-            uint256 repaying = amount * 1e18 / index;
+            uint256 repaying = (amount * 1e18) / index;
             if (repaying > p.borrow) repaying = p.borrow;
             // If closing the position, make sure we repay the whole borrow
             if (p.shares == 0) {
                 p.basis = 0;
                 repaying = p.borrow;
-                uint256 needed = p.borrow * index / 1e18;
+                uint256 needed = (p.borrow * index) / 1e18;
                 if (needed > amount) {
                     // If we don't have enough USDC from shares, sell some collateral
-                    uint256 cAmount = helper.convert(poolAsset, p.token, needed - amount);
-                    cAmount = cAmount * (10000 + closeCollateralPadding) / 10000;
+                    uint256 cAmount = helper.convert(
+                        poolAsset,
+                        p.token,
+                        needed - amount
+                    );
+                    cAmount =
+                        (cAmount * (10000 + closeCollateralPadding)) /
+                        10000;
                     if (cAmount > p.collateral) cAmount = p.collateral;
                     bank.transfer(p.token, address(this), cAmount);
                     IERC20(p.token).approve(address(helper), cAmount);
-                    uint256 topup = helper.swap(p.token, poolAsset, cAmount, slippage, address(this));
+                    uint256 topup = helper.swap(
+                        p.token,
+                        poolAsset,
+                        cAmount,
+                        slippage,
+                        address(this)
+                    );
                     amount = amount + topup;
                     p.collateral = p.collateral - cAmount;
                 }
@@ -425,7 +507,11 @@ contract Investor {
             IERC20(poolAsset).approve(address(pool), amount);
             uint256 used = pool.repay(repaying);
             p.borrow = p.borrow - repaying;
-            push(poolAsset, msg.sender, (amount - used) * (10000 - performanceFee) / 10000);
+            push(
+                poolAsset,
+                msg.sender,
+                ((amount - used) * (10000 - performanceFee)) / 10000
+            );
         }
 
         // 3. Borrow more from pool and mint strategy shares
@@ -451,7 +537,8 @@ contract Investor {
         }
 
         if (_life(p) < 1e18) revert Undercollateralized();
-        if (borrow > 0 && si.rate(si.totalShares()) > s.cap) revert StrategyOverCap();
+        if (borrow > 0 && si.rate(si.totalShares()) > s.cap)
+            revert StrategyOverCap();
         setPosition(id, p);
         emit Edit(id, borrow, collateralAdjusted);
     }
@@ -464,8 +551,8 @@ contract Investor {
     function killRepayment(uint256 id) external view returns (uint256) {
         IPool pool = IPool(store.getAddress(POOL));
         Position memory p = getPosition(id);
-        uint256 borrow = p.borrow * pool.getUpdatedIndex() / 1e18;
-        uint256 fee = borrow * killCollateralPadding / 10000 / 2;
+        uint256 borrow = (p.borrow * pool.getUpdatedIndex()) / 1e18;
+        uint256 fee = (borrow * killCollateralPadding) / 10000 / 2;
         return borrow + fee;
     }
 
@@ -481,13 +568,16 @@ contract Investor {
         Strategy memory s = getStrategy(p.strategy);
         address poolAsset = pool.asset();
         if (_life(p) >= 1e18) revert PositionNotLiquidatable();
-        if (store.getUint(STATUS) < STATUS_LIQUIDATE || s.status < STATUS_LIQUIDATE) revert WrongStatus();
+        if (
+            store.getUint(STATUS) < STATUS_LIQUIDATE ||
+            s.status < STATUS_LIQUIDATE
+        ) revert WrongStatus();
         if (lastBlock[id] == block.number) revert NoEditingInSameBlock();
         lastBlock[id] = block.number;
 
         // Repay borrow using liquidator funds
-        uint256 borrow = p.borrow * pool.getUpdatedIndex() / 1e18;
-        uint256 fee = borrow * killCollateralPadding / 10000 / 2;
+        uint256 borrow = (p.borrow * pool.getUpdatedIndex()) / 1e18;
+        uint256 fee = (borrow * killCollateralPadding) / 10000 / 2;
         IERC20(poolAsset).transferFrom(msg.sender, address(this), borrow + fee);
         IERC20(poolAsset).approve(address(pool), borrow);
         pool.repay(p.borrow);
@@ -501,7 +591,7 @@ contract Investor {
             if (amount < target) {
                 // Only use collateral if needed, some "in profit" position
                 // could be liquidatable if "expired/forced to exit"
-                collat = (target - amount) * 1e18 / helper.price(p.token);
+                collat = ((target - amount) * 1e18) / helper.price(p.token);
                 if (collat > p.collateral) collat = p.collateral;
                 bank.transfer(p.token, msg.sender, collat);
             }
@@ -509,10 +599,14 @@ contract Investor {
             // Transfer underlying to liquidator
             // scale shares to target. when just repaying borrow on an in
             // profit position, we don't want to use all shares
-            shares = p.shares * target / amount;
+            shares = (p.shares * target) / amount;
             if (shares > p.shares) shares = p.shares;
         }
-        bytes memory data = strategyProxy.kill(s.implementation, shares, msg.sender);
+        bytes memory data = strategyProxy.kill(
+            s.implementation,
+            shares,
+            msg.sender
+        );
 
         // Update state
         p.collateral = p.collateral - collat;
@@ -522,6 +616,93 @@ contract Investor {
 
         emit Kill(id, borrow, amount, collat, shares, fee);
         return (p.token, data);
+    }
+
+    /**
+     * @notice Partially liquidate a position.
+     * @param id The identifier of the position to be partially liquidated.
+     * @param partialBorrow The amount of borrow to be repaid.
+     * @param partialCollateral The amount of collateral to be liquidated.
+     * @return The remaining collateral after partial liquidation.
+     */
+    function partialKill(
+        uint256 id,
+        uint256 partialBorrow,
+        uint256 partialCollateral
+    ) external loop returns (uint256) {
+        // Initialize the bank and pool contracts
+        IBank bank = IBank(store.getAddress(BANK));
+        IPool pool = IPool(store.getAddress(POOL));
+
+        // Get the position details from storage
+        Position memory p = getPosition(id);
+
+        // Get the strategy details from storage
+        Strategy memory s = getStrategy(p.strategy);
+
+        // Get the address of the pool asset (the token being borrowed)
+        address poolAsset = pool.asset();
+
+        // Ensure the system and strategy statuses allow liquidation
+        if (
+            store.getUint(STATUS) < STATUS_LIQUIDATE ||
+            s.status < STATUS_LIQUIDATE
+        ) revert WrongStatus();
+
+        // Prevent multiple edits in the same block
+        if (lastBlock[id] == block.number) revert NoEditingInSameBlock();
+
+        // Update the lastBlock mapping to the current block number
+        lastBlock[id] = block.number;
+
+        // Calculate the amount needed to repay the borrow plus a fee
+        uint256 borrow = (partialBorrow * pool.getUpdatedIndex()) / 1e18;
+        uint256 fee = (borrow * killCollateralPadding) / 10000 / 2;
+
+        // Transfer the required amount from the liquidator to the contract
+        IERC20(poolAsset).transferFrom(msg.sender, address(this), borrow + fee);
+
+        // Approve the pool contract to use the transferred amount for repayment
+        IERC20(poolAsset).approve(address(pool), borrow);
+
+        // Repay the borrow amount to the pool
+        pool.repay(partialBorrow);
+
+        // Calculate the current value of the shares in the strategy
+        uint256 amount = IStrategy(s.implementation).rate(p.shares);
+
+        // Calculate the number of shares to be liquidated proportionally to the partial borrow amount
+        uint256 shares = (p.shares * partialBorrow) / p.borrow;
+        uint256 collat;
+
+        // Calculate the target value to be covered by the liquidation
+        uint256 target = helper.value(poolAsset, borrow + (fee * 2));
+
+        // If the current value is less than the target, liquidate the necessary collateral
+        if (amount < target) {
+            collat = ((target - amount) * 1e18) / helper.price(p.token);
+            if (collat > partialCollateral) collat = partialCollateral;
+            bank.transfer(p.token, msg.sender, collat);
+        }
+
+        // Scale the shares to the target value for partial liquidation
+        shares = (p.shares * target) / amount;
+        if (shares > p.shares) shares = p.shares;
+
+        // Call the kill function on the strategy proxy to handle the partial liquidation
+        strategyProxy.kill(s.implementation, shares, msg.sender);
+
+        // Update the position state to reflect the partial liquidation
+        p.collateral = p.collateral - collat;
+        p.shares = p.shares - shares;
+        p.borrow = p.borrow - partialBorrow;
+        setPosition(id, p);
+
+        // Emit an event to record the details of the partial liquidation
+        emit Kill(id, borrow, amount, collat, shares, fee);
+
+        // Return the remaining collateral after partial liquidation
+        return p.collateral;
     }
 
     /**
@@ -536,17 +717,26 @@ contract Investor {
 
     function _life(Position memory p) internal view returns (uint256) {
         if (p.borrow == 0) return 1e18;
-        IStrategy s = IStrategy(store.getAddress(keccak256(abi.encode(p.strategy, STRATEGIES_ADDRESS))));
+        IStrategy s = IStrategy(
+            store.getAddress(
+                keccak256(abi.encode(p.strategy, STRATEGIES_ADDRESS))
+            )
+        );
         IPool pool = IPool(store.getAddress(POOL));
         IOracle oracle = IOracle(pool.oracle());
-        uint256 factor = store.getUint(keccak256(abi.encode(p.token, COLLATERAL_FACTOR)));
+        uint256 factor = store.getUint(
+            keccak256(abi.encode(p.token, COLLATERAL_FACTOR))
+        );
         uint256 sharesValue = s.rate(p.shares);
         uint256 collateralValue = helper.value(p.token, p.collateral);
-        uint256 value = (sharesValue + collateralValue) * factor / 1e18;
-        uint256 price = (uint256(oracle.latestAnswer()) * 1e18) / (10 ** oracle.decimals());
-        uint256 scaled = (p.borrow * 1e18) / (10 ** IERC20(pool.asset()).decimals());
-        uint256 borrow = (scaled * pool.getUpdatedIndex() / 1e18) * price / 1e18;
-        return value * 1e18 / borrow;
+        uint256 value = ((sharesValue + collateralValue) * factor) / 1e18;
+        uint256 price = (uint256(oracle.latestAnswer()) * 1e18) /
+            (10 ** oracle.decimals());
+        uint256 scaled = (p.borrow * 1e18) /
+            (10 ** IERC20(pool.asset()).decimals());
+        uint256 borrow = (((scaled * pool.getUpdatedIndex()) / 1e18) * price) /
+            1e18;
+        return (value * 1e18) / borrow;
     }
 
     /**
@@ -557,9 +747,13 @@ contract Investor {
     function getPosition(uint256 id) public view returns (Position memory p) {
         p.owner = store.getAddress(keccak256(abi.encode(id, POSITIONS_OWNER)));
         p.start = store.getUint(keccak256(abi.encode(id, POSITIONS_START)));
-        p.strategy = store.getUint(keccak256(abi.encode(id, POSITIONS_STRATEGY)));
+        p.strategy = store.getUint(
+            keccak256(abi.encode(id, POSITIONS_STRATEGY))
+        );
         p.token = store.getAddress(keccak256(abi.encode(id, POSITIONS_TOKEN)));
-        p.collateral = store.getUint(keccak256(abi.encode(id, POSITIONS_COLLATERAL)));
+        p.collateral = store.getUint(
+            keccak256(abi.encode(id, POSITIONS_COLLATERAL))
+        );
         p.borrow = store.getUint(keccak256(abi.encode(id, POSITIONS_BORROW)));
         p.shares = store.getUint(keccak256(abi.encode(id, POSITIONS_SHARES)));
         p.basis = store.getUint(keccak256(abi.encode(id, POSITIONS_BASIS)));
@@ -568,9 +762,15 @@ contract Investor {
     function setPosition(uint256 id, Position memory p) internal {
         store.setAddress(keccak256(abi.encode(id, POSITIONS_OWNER)), p.owner);
         store.setUint(keccak256(abi.encode(id, POSITIONS_START)), p.start);
-        store.setUint(keccak256(abi.encode(id, POSITIONS_STRATEGY)), p.strategy);
+        store.setUint(
+            keccak256(abi.encode(id, POSITIONS_STRATEGY)),
+            p.strategy
+        );
         store.setAddress(keccak256(abi.encode(id, POSITIONS_TOKEN)), p.token);
-        store.setUint(keccak256(abi.encode(id, POSITIONS_COLLATERAL)), p.collateral);
+        store.setUint(
+            keccak256(abi.encode(id, POSITIONS_COLLATERAL)),
+            p.collateral
+        );
         store.setUint(keccak256(abi.encode(id, POSITIONS_BORROW)), p.borrow);
         store.setUint(keccak256(abi.encode(id, POSITIONS_SHARES)), p.shares);
         store.setUint(keccak256(abi.encode(id, POSITIONS_BASIS)), p.basis);
@@ -582,7 +782,9 @@ contract Investor {
      * @return s The strategy details.
      */
     function getStrategy(uint256 id) public view returns (Strategy memory s) {
-        s.implementation = store.getAddress(keccak256(abi.encode(id, STRATEGIES_ADDRESS)));
+        s.implementation = store.getAddress(
+            keccak256(abi.encode(id, STRATEGIES_ADDRESS))
+        );
         s.cap = store.getUint(keccak256(abi.encode(id, STRATEGIES_CAP)));
         s.status = store.getUint(keccak256(abi.encode(id, STRATEGIES_STATUS)));
         if (s.implementation == address(0)) revert UnknownStrategy();
