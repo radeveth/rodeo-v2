@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import { IStore } from "./interfaces/IStore.sol";
+
 /**
  * @title Store
  * @dev Storage contract for managing different types of data.
  */
-contract Store {
+contract Store is IStore {
     mapping(address => bool) public exec;
     mapping(bytes32 => uint256) public uintValues;
     mapping(bytes32 => int256) public intValues;
@@ -301,7 +303,7 @@ contract Store {
      * @param key The key associated with the set.
      * @param start The starting index.
      * @param end The ending index.
-     * @return The array of bytes32 values in the specified range.
+     * @return v The range of bytes32 values.
      */
     function getBytes32ValuesAt(bytes32 key, uint256 start, uint256 end) external view returns (bytes32[] memory v) {
         v = new bytes32[](end - start);

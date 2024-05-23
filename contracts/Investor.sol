@@ -1,72 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-interface IERC20 {
-    function decimals() external view returns (uint8);
-    function balanceOf(address) external view returns (uint256);
-    function approve(address, uint256) external;
-    function transfer(address, uint256) external returns (bool);
-    function transferFrom(address, address, uint256) external returns (bool);
-}
-
-interface IOracle {
-    function decimals() external view returns (uint8);
-    function latestAnswer() external view returns (int256);
-}
-
-interface IStore {
-    function exec(address) external view returns (bool);
-    function getUint(bytes32) external view returns (uint256);
-    function getAddress(bytes32) external view returns (address);
-    function setUint(bytes32, uint256) external;
-    function setUintDelta(bytes32, int256) external returns (uint256);
-    function setAddress(bytes32, address) external returns (address);
-}
-
-interface IBank {
-    function exec(address) external view returns (bool);
-    function transfer(address, address, uint256) external;
-}
-
-interface IPool {
-    function exec(address) external view returns (bool);
-    function asset() external view returns (address);
-    function oracle() external view returns (address);
-    function getUpdatedIndex() external view returns (uint256);
-    function borrow(uint256) external returns (uint256);
-    function repay(uint256) external returns (uint256);
-}
-
-interface IHelper {
-    function price(address) external view returns (uint256);
-    function value(address, uint256) external view returns (uint256);
-    function convert(address, address, uint256) external view returns (uint256);
-    function swap(
-        address,
-        address,
-        uint256,
-        uint256,
-        address
-    ) external returns (uint256);
-}
-
-interface IStrategy {
-    function totalShares() external view returns (uint256);
-    function rate(uint256) external view returns (uint256);
-    function exit(address) external;
-    function move(address) external;
-}
-
-interface IStrategyProxy {
-    function exec(address) external view returns (bool);
-    function mint(address, uint256) external returns (uint256);
-    function burn(address, uint256) external returns (uint256);
-    function kill(address, uint256, address) external returns (bytes memory);
-}
-
-interface IWhitelist {
-    function check(address) external view returns (bool);
-}
+import { IOracle } from "./interfaces/IOracle.sol";
+import { IERC20 } from "./interfaces/IERC20.sol";
+import { IStore } from "./interfaces/IStore.sol";
+import { IBank } from "./interfaces/IBank.sol";
+import { IPool } from "./interfaces/IPool.sol";
+import { IHelper } from "./interfaces/IHelper.sol";
+import { IStrategy } from "./interfaces/IStrategy.sol";
+import { IStrategyProxy } from "./interfaces/IStrategyProxy.sol";
+import { IWhitelist } from "./interfaces/IWhitelist.sol";
+import { IInvestor } from "./interfaces/IInvestor.sol";
 
 /**
  * @title Investor
@@ -85,6 +29,9 @@ contract Investor {
     mapping(uint256 => uint256) private lastBlock;
     mapping(address => bool) public exec;
 
+    // @audit what are these statuses
+
+// #region mahni 
     uint256 public constant STATUS_LIVE = 4;
     uint256 public constant STATUS_WITHDRAW = 3;
     uint256 public constant STATUS_LIQUIDATE = 2;
@@ -132,6 +79,16 @@ contract Investor {
         uint256 shares,
         uint256 fee
     );
+
+    event PartialKill(
+        uint256 indexed id,
+        uint256 borrow,
+        uint256 value,
+        uint256 collateral,
+        uint256 shares,
+        uint256 fee
+    );
+
     event StrategyUpdate(
         uint256 indexed index,
         address implementation,
@@ -175,7 +132,7 @@ contract Investor {
         uint256 shares;
         uint256 basis;
     }
-
+//#endregion mahni
     /**
      * @dev Constructor initializes the store and helper contracts.
      * @param _store The address of the store contract.
@@ -557,6 +514,20 @@ contract Investor {
     }
 
     /**
+        * @notice Calculates the repayment amount required to partially kill a position.
+        * @param amount The amount of collateral to liquidate.
+     */
+    function partialKillRepayment(uint256 amount)
+        external
+        view
+        returns (uint256)
+    {
+        uint256 fee = (amount * killCollateralPadding) / 10000 / 2;
+
+        return amount + fee;
+    }
+
+    /**
      * @notice Kills a position, liquidating it if undercollateralized.
      * @param id The ID of the position to kill.
      * @return The address of the token and the data from the strategy proxy.
@@ -619,91 +590,67 @@ contract Investor {
     }
 
     /**
-     * @notice Partially liquidate a position.
-     * @param id The identifier of the position to be partially liquidated.
-     * @param partialBorrow The amount of borrow to be repaid.
-     * @param partialCollateral The amount of collateral to be liquidated.
-     * @return The remaining collateral after partial liquidation.
+        * @notice Partially kills a position
+        * @param id The ID of the position to partially kill.
+        * @param amount The amount of collateral to liquidate.
+        * @return The address of the token and the data from the strategy proxy.
      */
-    function partialKill(
-        uint256 id,
-        uint256 partialBorrow,
-        uint256 partialCollateral
-    ) external loop returns (uint256) {
-        // Initialize the bank and pool contracts
+    function partialKill(uint256 id, uint256 amount) external loop returns (address, bytes memory) {
         IBank bank = IBank(store.getAddress(BANK));
         IPool pool = IPool(store.getAddress(POOL));
-
-        // Get the position details from storage
         Position memory p = getPosition(id);
-
-        // Get the strategy details from storage
         Strategy memory s = getStrategy(p.strategy);
-
-        // Get the address of the pool asset (the token being borrowed)
         address poolAsset = pool.asset();
-
-        // Ensure the system and strategy statuses allow liquidation
+        
+        if (amount == 0) revert InvalidParameters();
+        if (_life(p) >= 1e18) revert PositionNotLiquidatable();
         if (
             store.getUint(STATUS) < STATUS_LIQUIDATE ||
             s.status < STATUS_LIQUIDATE
         ) revert WrongStatus();
-
-        // Prevent multiple edits in the same block
         if (lastBlock[id] == block.number) revert NoEditingInSameBlock();
-
-        // Update the lastBlock mapping to the current block number
         lastBlock[id] = block.number;
 
-        // Calculate the amount needed to repay the borrow plus a fee
-        uint256 borrow = (partialBorrow * pool.getUpdatedIndex()) / 1e18;
-        uint256 fee = (borrow * killCollateralPadding) / 10000 / 2;
+        // Calculate the borrow to be repaid based on customAmount
+        uint256 totalBorrow = (p.borrow * pool.getUpdatedIndex()) / 1e18;
+        require(amount <= totalBorrow, "Amount exceeds borrow");
+        
+        uint256 fee = (amount * killCollateralPadding) / 10000 / 2;
+        IERC20(poolAsset).transferFrom(msg.sender, address(this), amount + fee);
+        IERC20(poolAsset).approve(address(pool), amount);
+        pool.repay(amount);
 
-        // Transfer the required amount from the liquidator to the contract
-        IERC20(poolAsset).transferFrom(msg.sender, address(this), borrow + fee);
-
-        // Approve the pool contract to use the transferred amount for repayment
-        IERC20(poolAsset).approve(address(pool), borrow);
-
-        // Repay the borrow amount to the pool
-        pool.repay(partialBorrow);
-
-        // Calculate the current value of the shares in the strategy
-        uint256 amount = IStrategy(s.implementation).rate(p.shares);
-
-        // Calculate the number of shares to be liquidated proportionally to the partial borrow amount
-        uint256 shares = (p.shares * partialBorrow) / p.borrow;
+        uint256 value = IStrategy(s.implementation).rate(p.shares);
+        uint256 shares;
         uint256 collat;
 
-        // Calculate the target value to be covered by the liquidation
-        uint256 target = helper.value(poolAsset, borrow + (fee * 2));
+        {
+            // Transfer collateral to liquidator
+            uint256 target = helper.value(poolAsset, amount + (fee * 2));
+            if (value < target) {
+                collat = ((target - value) * 1e18) / helper.price(p.token);
+                if (collat > p.collateral) collat = p.collateral;
+                bank.transfer(p.token, msg.sender, collat);
+            }
 
-        // If the current value is less than the target, liquidate the necessary collateral
-        if (amount < target) {
-            collat = ((target - amount) * 1e18) / helper.price(p.token);
-            if (collat > partialCollateral) collat = partialCollateral;
-            bank.transfer(p.token, msg.sender, collat);
+            // Transfer underlying to liquidator
+            shares = (p.shares * target) / value;
+            if (shares > p.shares) shares = p.shares;
         }
 
-        // Scale the shares to the target value for partial liquidation
-        shares = (p.shares * target) / amount;
-        if (shares > p.shares) shares = p.shares;
+        bytes memory data = strategyProxy.kill(s.implementation, shares, msg.sender);
 
-        // Call the kill function on the strategy proxy to handle the partial liquidation
-        strategyProxy.kill(s.implementation, shares, msg.sender);
-
-        // Update the position state to reflect the partial liquidation
+        // Update state
         p.collateral = p.collateral - collat;
         p.shares = p.shares - shares;
-        p.borrow = p.borrow - partialBorrow;
+        p.borrow = p.borrow - amount;
         setPosition(id, p);
 
-        // Emit an event to record the details of the partial liquidation
-        emit Kill(id, borrow, amount, collat, shares, fee);
+        emit PartialKill(id, amount, value, p.collateral, p.shares, fee);
 
-        // Return the remaining collateral after partial liquidation
-        return p.collateral;
+        return (p.token, data);
     }
+
 
     /**
      * @notice Returns the life (collateralization ratio) of a position.

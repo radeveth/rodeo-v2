@@ -4,63 +4,14 @@ pragma solidity 0.8.17;
 import {Base64} from "./vendor/Base64.sol";
 import {Strings} from "./vendor/Strings.sol";
 
-interface IERC20 {
-    function decimals() external view returns (uint8);
-    function balanceOf(address) external view returns (uint256);
-    function approve(address, uint256) external returns (bool);
-    function transfer(address, uint256) external returns (bool);
-    function transferFrom(address, address, uint256) external returns (bool);
-}
+import {IERC20} from "./interfaces/IERC20.sol";
+import { IOracle } from "./interfaces/IOracle.sol";
+import { IPool } from "./interfaces/IPool.sol";
+import { IStrategy } from "./interfaces/IStrategy.sol";
+import { IInvestor } from "./interfaces/IInvestor.sol";
+import { IWhitelist } from "./interfaces/IWhitelist.sol";
+import { ERC721TokenReceiver } from "./interfaces/ERC721TokenReceiver.sol";
 
-interface IOracle {
-    function latestAnswer() external view returns (int256);
-    function decimals() external view returns (uint8);
-}
-
-interface IPool {
-    function asset() external view returns (address);
-    function oracle() external view returns (address);
-    function getUpdatedIndex() external view returns (uint256);
-}
-
-interface IStrategy {
-    function name() external view returns (string memory);
-    function rate(uint256 shares) external view returns (uint256);
-}
-
-interface IInvestor {
-    struct Strategy {
-        address implementation;
-        uint256 cap;
-        uint256 status;
-    }
-
-    struct Position {
-        address owner;
-        uint256 start;
-        uint256 strategy;
-        address token;
-        uint256 collateral;
-        uint256 borrow;
-        uint256 shares;
-        uint256 basis;
-    }
-
-    function getPool() external view returns (address);
-    function getStrategy(uint256 id) external view returns (Strategy memory);
-    function getPosition(uint256 id) external view returns (Position memory);
-    function life(uint256 id) external view returns (uint256);
-    function open(uint256 strategy, address token, uint256 collateral, uint256 borrow) external returns (uint256);
-    function edit(uint256 id, int256 borrow, int256 collateral) external;
-}
-
-interface IWhitelist {
-    function check(address) external view returns (bool);
-}
-
-interface ERC721TokenReceiver {
-    function onERC721Received(address, address, uint256, bytes calldata) external pure returns (bytes4);
-}
 /// @author Solmate (https://github.com/transmissions11/solmate/blob/main/src/tokens/ERC721.sol)
 /// @title Position Manager for Rodeo V2 Finance
 /// @notice Manages leveraged farming positions as NFTs

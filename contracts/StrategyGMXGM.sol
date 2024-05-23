@@ -520,8 +520,6 @@ contract StrategyGMXGM {
 
     /**
      * @notice Function to handle withdrawal execution
-     * @param props The properties of the withdrawal
-     * @param eventLog The event log data
      */
     function afterWithdrawalExecution(
         bytes32,
@@ -537,8 +535,6 @@ contract StrategyGMXGM {
 
     /**
      * @notice Function to handle withdrawal cancellation
-     * @param props The properties of the withdrawal
-     * @param eventLog The event log data
      */
     function afterWithdrawalCancellation(
         bytes32,

@@ -469,7 +469,8 @@ contract StrategyCamelotV3 {
      * @param trgtAst The target asset address.
      * @param amt The amount of assets.
      * @param slp The slippage percentage.
-     * @return The amounts of assets swapped.
+     * @return amt0 The amount of the first asset.
+     * @return amt1 The amount of the second asset.
      */
     function quoteAndSwap(address trgtAst, uint256 amt, uint256 slp) private returns (uint256 amt0, uint256 amt1) {
         bytes memory path = pathToLp;
@@ -567,7 +568,6 @@ contract StrategyCamelotV3 {
     /**
      * @dev Handles receipt of an ERC721 token.
      * @param _tokenId The ID of the received token.
-     * @param _data Additional data.
      * @return The selector of the ERC721 receiver interface.
      */
     function onERC721Received(address, address, uint256 _tokenId, bytes calldata) external returns (bytes4) {

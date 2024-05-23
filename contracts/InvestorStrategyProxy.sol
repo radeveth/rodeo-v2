@@ -1,61 +1,24 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
+import { IERC20 } from "./interfaces/IERC20.sol";
+import { IStrategyProxy } from "./interfaces/IStrategyProxy.sol";
+import { IStrategy } from "./interfaces/IStrategy.sol";
+
 /**
  * @title InvestorStrategyProxy
  * @dev Proxy contract for interacting with investment strategies.
  */
-interface IERC20 {
-    /**
-     * @dev Approves the passed address to spend the specified amount of tokens on behalf of the caller.
-     * @param spender The address which will spend the funds.
-     * @param amount The amount of tokens to be spent.
-     * @return A boolean that indicates if the operation was successful.
-     */
-    function approve(address spender, uint256 amount) external returns (bool);
-
-    /**
-     * @dev Transfers tokens to a specified address.
-     * @param to The address to transfer to.
-     * @param amount The amount to be transferred.
-     * @return A boolean that indicates if the operation was successful.
-     */
-    function transfer(address to, uint256 amount) external returns (bool);
-}
-
 /**
  * @title IStrategy
  * @dev Interface for investment strategy contracts.
  */
-interface IStrategy {
-    /**
-     * @dev Mints shares in the strategy in exchange for the specified amount of assets.
-     * @param amount The amount of assets to be invested.
-     * @return The number of shares minted.
-     */
-    function mint(uint256 amount) external returns (uint256 shares);
-
-    /**
-     * @dev Burns the specified number of shares in the strategy in exchange for assets.
-     * @param shares The number of shares to be burned.
-     * @return The amount of assets returned.
-     */
-    function burn(uint256 shares) external returns (uint256 amount);
-
-    /**
-     * @dev Kills the specified number of shares and transfers assets to the target address.
-     * @param shares The number of shares to be killed.
-     * @param to The address to transfer the assets to.
-     * @return A bytes array containing any additional data returned by the strategy.
-     */
-    function kill(uint256 shares, address to) external returns (bytes memory);
-}
 
 /**
  * @title InvestorStrategyProxy
  * @dev Proxy contract for managing interactions with investment strategies.
  */
-contract InvestorStrategyProxy {
+contract InvestorStrategyProxy is IStrategyProxy {
     /// @notice The asset managed by the proxy.
     IERC20 public asset;
 

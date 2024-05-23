@@ -1,36 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import { IERC20 } from "./interfaces/IERC20.sol";
+import { IInvestor } from "./interfaces/IInvestor.sol";
+import { IAavePool } from "./interfaces/IAavePool.sol";
+import { IStrategyHelper } from "./interfaces/IStrategyHelper.sol";
+import { ISushi } from "./interfaces/ISushi.sol";
+
 /// @title Helper Contract for Rodeo V2 Finance
 /// @notice This contract provides various helper functions for interacting with investment strategies and handling liquidations.
 /// @dev The contract uses flash loans from Aave and integrates with SushiSwap for asset swaps.
-
-interface IERC20 {
-    function balanceOf(address) external view returns (uint256);
-    function approve(address, uint256) external;
-    function transfer(address, uint256) external;
-}
-
-interface IInvestor {
-    function killRepayment(uint256) external returns (uint256);
-    function kill(uint256 id) external returns (address, bytes memory);
-}
-
-interface IAavePool {
-    function flashLoanSimple(address receiver, address asset, uint256 amount, bytes calldata params, uint16 referrer)
-        external;
-}
-
-interface IStrategyHelper {
-    function swap(address, address, uint256, uint256, address) external returns (uint256);
-}
-
-interface ISushi {
-    function token0() external view returns (address);
-    function token1() external view returns (address);
-    function burn(address) external;
-}
-
 contract Helper {
     IInvestor public investor;
     IERC20 public asset;
@@ -50,10 +29,19 @@ contract Helper {
         sh = IStrategyHelper(_sh);
     }
 
+    function setInvestor(address _investor) external {
+        investor = IInvestor(_investor);
+    }
+
     /// @notice Kills an undercollateralized position using a flash loan
     /// @param id The ID of the position to be killed
     function kill(uint256 id) external {
         uint256 repay = investor.killRepayment(id);
+        lender.flashLoanSimple(address(this), address(asset), repay, abi.encodePacked(id), 0);
+    }
+
+    function partialKill(uint256 id, uint256 amount) external {
+        uint256 repay = investor.partialKillRepayment(amount);
         lender.flashLoanSimple(address(this), address(asset), repay, abi.encodePacked(id), 0);
     }
 
